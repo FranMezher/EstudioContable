@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Estudio Mezher Pampin — Gestión de clientes
 
-## Getting Started
+Aplicación web multi-cliente para el estudio contable **Mezher Pampin**.
 
-First, run the development server:
+## Funcionalidades
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Login por rol**: el estudio (admin) ve y gestiona todos los clientes; cada cliente ve solo su información.
+- **Declaraciones Juradas**: IVA, IIBB, Ganancias y Balances, organizadas por período (mes/año).
+- **Sindicatos**: el estudio carga los aportes y el cliente marca **OK** al pagar.
+- **Recibos de Sueldo**: por empleado y período.
+- **Consultas**: el cliente las envía, llegan por email (destino configurable) y quedan registradas.
+- **Notificaciones**: campanita in-app + email ante novedades.
+- Ambos (estudio y cliente) pueden cargar documentación.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Next.js 16** (App Router) + **TypeScript** + **Tailwind CSS v4**
+- **PostgreSQL** (Neon) + **Prisma 7** (driver adapter `@prisma/adapter-pg`)
+- **Auth.js (NextAuth v5)** — email + contraseña
+- **Vercel Blob** — almacenamiento de PDFs
+- **Resend** — envío de emails
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Puesta en marcha (local)
 
-## Learn More
+1. Instalá dependencias:
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Copiá `.env.example` a `.env` y completá las variables (ver abajo).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Creá las tablas en la base y cargá el admin inicial:
+   ```bash
+   npm run db:push     # crea el esquema en la base
+   npm run db:seed     # crea el usuario admin (según SEED_ADMIN_*)
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Levantá el servidor:
+   ```bash
+   npm run dev
+   ```
+   Entrá a http://localhost:3000 con el email/clave del admin.
 
-## Deploy on Vercel
+## Variables de entorno
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Variable | Para qué | Dónde se obtiene |
+|----------|----------|------------------|
+| `DATABASE_URL` | Conexión a Postgres | Neon → Connection string |
+| `AUTH_SECRET` | Firma de sesiones | `npx auth secret` |
+| `BLOB_READ_WRITE_TOKEN` | Subir/leer PDFs | Vercel → Storage → Blob |
+| `RESEND_API_KEY` | Envío de emails | Resend → API Keys |
+| `EMAIL_FROM` | Remitente de emails | Dominio verificado en Resend |
+| `SEED_ADMIN_*` | Admin inicial | Lo elegís vos |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts útiles
+
+- `npm run dev` — desarrollo
+- `npm run build` — build de producción
+- `npm run db:push` — sincroniza el esquema con la base (sin migraciones)
+- `npm run db:migrate` — crea una migración versionada
+- `npm run db:seed` — crea el admin inicial
+- `npm run db:studio` — explorador visual de la base
+
+## Deploy en Vercel
+
+1. Subí el repo a GitHub e importalo en Vercel.
+2. Cargá todas las variables de entorno en **Project Settings → Environment Variables**.
+3. Agregá **Neon Postgres** y **Vercel Blob** desde la pestaña Storage (setean variables solas).
+4. El `postinstall` corre `prisma generate` automáticamente.
+5. Después del primer deploy, corré el seed una vez (localmente apuntando a la base de producción, o con `vercel env pull` + `npm run db:seed`).

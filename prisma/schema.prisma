@@ -1,0 +1,192 @@
+// Estudio Mezher Pampin - Gestión de clientes
+// Modelo de datos
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum DeclarationType {
+  IVA
+  IIBB
+  GANANCIAS
+  BALANCES
+}
+
+enum UploaderRole {
+  ADMIN
+  CLIENT
+}
+
+enum InquiryStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum NotificationType {
+  DECLARATION
+  UNION
+  PAYSLIP
+  INQUIRY
+  GENERAL
+}
+
+// Usuarios del sistema (admin del estudio o cliente)
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(CLIENT)
+  // Si es CLIENT, apunta a la empresa/cliente que representa
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  notifications Notification[]
+
+  @@index([clientId])
+}
+
+// Cliente del estudio (empresa o persona)
+model Client {
+  id        String   @id @default(cuid())
+  name      String // Razón social / nombre
+  cuit      String?
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  declarations Declaration[]
+  unionItems   UnionItem[]
+  employees    Employee[]
+  inquiries    Inquiry[]
+}
+
+// Declaraciones juradas: IVA, IIBB, Ganancias, Balances
+model Declaration {
+  id           String          @id @default(cuid())
+  clientId     String
+  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type         DeclarationType
+  periodMonth  Int? // 1-12, opcional (ej: balances anuales)
+  periodYear   Int
+  fileUrl      String
+  fileName     String
+  notes        String?
+  uploadedById String
+  uploadedRole UploaderRole
+  createdAt    DateTime        @default(now())
+
+  @@index([clientId, type])
+  @@index([clientId, periodYear, periodMonth])
+}
+
+// Sindicatos: el estudio/cliente carga, el cliente marca OK al pagar
+model UnionItem {
+  id          String       @id @default(cuid())
+  clientId    String
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String // Ej: "Sindicato Comercio - Aporte"
+  description String?
+  periodMonth Int?
+  periodYear  Int
+  amount      Decimal?     @db.Decimal(14, 2)
+  fileUrl     String?
+  fileName    String?
+  isPaid      Boolean      @default(false)
+  paidAt      DateTime?
+  paidById    String?
+  createdById String
+  createdRole UploaderRole
+  createdAt   DateTime     @default(now())
+
+  @@index([clientId, periodYear, periodMonth])
+  @@index([clientId, isPaid])
+}
+
+// Empleados de un cliente (para los recibos de sueldo)
+model Employee {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  cuil      String?
+  position  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  payslips Payslip[]
+
+  @@index([clientId])
+}
+
+// Recibos de sueldo por empleado y período
+model Payslip {
+  id           String       @id @default(cuid())
+  employeeId   String
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodMonth  Int
+  periodYear   Int
+  fileUrl      String
+  fileName     String
+  netAmount    Decimal?     @db.Decimal(14, 2)
+  uploadedById String
+  uploadedRole UploaderRole
+  createdAt    DateTime     @default(now())
+
+  @@index([employeeId, periodYear, periodMonth])
+}
+
+// Consultas de los clientes (llegan por mail + quedan registradas)
+model Inquiry {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  subject     String
+  message     String
+  status      InquiryStatus @default(OPEN)
+  createdById String
+  response    String?
+  respondedAt DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([clientId, status])
+}
+
+// Notificaciones in-app
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+// Configuración global (ej: mail destino de consultas)
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
