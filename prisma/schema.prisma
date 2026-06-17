@@ -76,6 +76,24 @@ model Client {
   unionItems   UnionItem[]
   employees    Employee[]
   inquiries    Inquiry[]
+  apiKeys      ApiKey[]
+}
+
+// API keys para integraciones / carga masiva vía API REST
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String // Etiqueta descriptiva (ej: "Script AFIP")
+  prefix      String // Primeros caracteres visibles para identificarla
+  keyHash     String    @unique // hash SHA-256 de la clave completa
+  // null = acceso total (admin); con valor = limitada a ese cliente
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdById String
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([clientId])
 }
 
 // Declaraciones juradas: IVA, IIBB, Ganancias, Balances

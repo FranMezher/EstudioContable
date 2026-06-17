@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getActor } from "@/server/access";
 import { SETTING_KEYS } from "@/lib/constants";
 import { sendEmail, emailLayout } from "@/lib/email";
+import { generateApiKey } from "@/server/api/http";
 
 export type ActionState = { ok?: boolean; error?: string };
 
@@ -135,6 +136,46 @@ export async function setInquiryEmail(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error al guardar" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// API KEYS
+// ---------------------------------------------------------------------------
+export type ApiKeyState = { ok?: boolean; error?: string; fullKey?: string };
+
+/** Crea una API key. La clave completa se devuelve UNA sola vez. */
+export async function createApiKey(
+  _prev: ApiKeyState,
+  formData: FormData
+): Promise<ApiKeyState> {
+  try {
+    const admin = await ensureAdmin();
+    const name = (formData.get("name") as string)?.trim();
+    if (!name) throw new Error("Indicá un nombre para la API key");
+
+    const clientId = (formData.get("clientId") as string) || null;
+    if (clientId) {
+      const exists = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true } });
+      if (!exists) throw new Error("Cliente inexistente");
+    }
+
+    const { fullKey, prefix, keyHash } = generateApiKey();
+    await prisma.apiKey.create({
+      data: { name, prefix, keyHash, clientId, createdById: admin.id },
+    });
+
+    revalidatePath("/admin/configuracion");
+    return { ok: true, fullKey };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error al crear la API key" };
+  }
+}
+
+/** Desactiva (revoca) una API key. */
+export async function revokeApiKey(id: string) {
+  await ensureAdmin();
+  await prisma.apiKey.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/admin/configuracion");
 }
 
 /** Envía un email de prueba para validar la configuración de Resend. */

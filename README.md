@@ -61,6 +61,12 @@ Aplicación web multi-cliente para el estudio contable **Mezher Pampin**.
 - `npm run db:seed` — crea el admin inicial
 - `npm run db:studio` — explorador visual de la base
 
+## API REST (integraciones y carga masiva)
+
+La app expone una API REST versionada en `/api/v1`, autenticada con **API keys** (Bearer token) que se generan desde **Configuración → API keys** en el panel admin. Soporta scope por cliente y carga masiva.
+
+Ver la documentación completa en **[docs/API.md](docs/API.md)**.
+
 ## Deploy en Vercel
 
 1. Subí el repo a GitHub e importalo en Vercel.

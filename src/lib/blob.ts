@@ -28,6 +28,26 @@ export async function uploadFile(
   return { url: blob.url, fileName: file.name };
 }
 
+/**
+ * Sube contenido binario (Buffer) a Vercel Blob. Útil para la API,
+ * que recibe archivos en base64 en vez de multipart.
+ */
+export async function uploadBuffer(
+  data: Buffer,
+  fileName: string,
+  opts: { folder: string; clientId: string }
+): Promise<{ url: string; fileName: string }> {
+  if (!token) {
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN no configurado. Conectá Vercel Blob para poder subir archivos."
+    );
+  }
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const pathname = `${opts.folder}/${opts.clientId}/${Date.now()}-${safeName}`;
+  const blob = await put(pathname, data, { access: "public", token, addRandomSuffix: false });
+  return { url: blob.url, fileName };
+}
+
 export async function deleteFile(url: string) {
   if (!token) return;
   try {
