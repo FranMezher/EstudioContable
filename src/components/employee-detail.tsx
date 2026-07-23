@@ -7,6 +7,7 @@ import { PayslipList } from "@/components/payslip-list";
 import { UploadPayslipForm } from "@/components/forms/upload-payslip-form";
 import { DeletePayslipButton } from "@/components/delete-payslip-button";
 import { CreateEmployeeAccess } from "@/components/forms/create-employee-access";
+import { PersonalDataCard } from "@/components/forms/personal-data-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -47,6 +48,8 @@ export function EmployeeDetail({
           .join(" · ")}
         action={<UploadPayslipForm employeeId={employee.id} />}
       />
+
+      <PersonalDataCard employee={employee} />
 
       <Card className="mb-5">
         <CardContent className="flex flex-wrap items-center justify-between gap-3">

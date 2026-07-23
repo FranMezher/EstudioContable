@@ -14,6 +14,7 @@ import {
   svcUpdateCompany,
   svcUpdateEmployee,
   svcChangeOwnPassword,
+  svcCompleteMyProfile,
 } from "@/server/services";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -106,17 +107,43 @@ export async function createEmployee(_prev: ActionState, formData: FormData): Pr
   }
 }
 
+/** Edición de datos personales por el admin. */
 export async function updateEmployee(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const actor = await getSessionScope();
     await svcUpdateEmployee(actor, str(formData, "employeeId"), {
-      name: str(formData, "name"),
+      firstName: str(formData, "firstName"),
+      lastName: str(formData, "lastName"),
+      legajo: str(formData, "legajo"),
+      dni: str(formData, "dni"),
+      address: str(formData, "address"),
       position: str(formData, "position") || null,
     });
     revalidateAll();
     return { ok: true };
   } catch (e) {
     return fail(e, "No se pudo actualizar el empleado");
+  }
+}
+
+/** El empleado completa su perfil en el primer ingreso (una sola vez). */
+export async function completeMyProfile(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const { userId } = await getSessionScope();
+    await svcCompleteMyProfile(userId, {
+      firstName: str(formData, "firstName"),
+      lastName: str(formData, "lastName"),
+      dni: str(formData, "dni"),
+      legajo: str(formData, "legajo") || null,
+      address: str(formData, "address") || null,
+    });
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo guardar el perfil");
   }
 }
 

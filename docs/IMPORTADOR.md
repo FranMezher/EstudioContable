@@ -22,11 +22,32 @@ Lo importante es que **el nombre de alguna carpeta del camino identifique a la e
 
 ## Cómo decide a quién corresponde cada archivo
 
-1. **Por el nombre** (rápido, no falla): busca 11 dígitos consecutivos para el CUIL y un período en formato `2026-06`, `06-2026`, `202606` o `Junio 2026`, mirando el archivo y su carpeta.
-2. **Por el contenido** (respaldo): si con el nombre no alcanza, abre el PDF, extrae el texto y busca ahí el CUIL, el período, el nombre del empleado y el neto.
-3. **Si tampoco alcanza**, el archivo queda listado en *Estudio → Importaciones* con el motivo. Nunca se asigna por aproximación.
+El importador está afinado para el formato real de los recibos, cuyo nombre es
+`Recibos de Sueldos-Liq 1207 -Leg 1020.pdf` (número de liquidación + legajo) y
+que adentro trae todos los datos en texto.
 
-La empresa sale del mapa `scripts/import.config.json`.
+1. **Del nombre del archivo** saca el **legajo** (`Leg 1020`) y el **número de
+   liquidación** (`Liq 1207`).
+2. **Del contenido del PDF** saca el resto (el período NO está en el nombre):
+   - CUIT del empleador → identifica la **empresa** sola, sin depender de la carpeta.
+   - CUIL, legajo, DNI y nombre del **empleado**.
+   - Período ("Remuneración Correspondiente a: ABRIL 2026").
+   - Neto a cobrar.
+3. **Asignación del empleado**: primero por **CUIL**; si no, por **legajo**
+   dentro de la empresa.
+4. **Si el PDF es un escaneo sin texto** (no se puede leer el período), el
+   archivo queda listado en *Estudio → Importaciones*. Nunca se asigna por aproximación.
+
+La empresa se resuelve por el CUIT que viene en el PDF; si no, por el mapa
+`scripts/import.config.json` (nombre de carpeta → CUIT). Con el formato actual,
+el mapa suele no hacer falta.
+
+### Varios recibos en el mismo mes
+
+Un empleado puede tener **varios recibos en el mismo mes** (sueldo, SAC, bonos):
+cada liquidación (`Liq 1207`, `Liq 1218`, …) es un recibo distinto. El importador
+los trata como separados y el número de liquidación evita duplicarlos si se
+re-corre.
 
 ## Puesta en marcha
 

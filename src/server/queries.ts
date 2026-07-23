@@ -18,6 +18,8 @@ export type PayslipDTO = {
   id: string;
   periodMonth: number;
   periodYear: number;
+  liqNumber: string | null;
+  label: string | null;
   fileName: string;
   fileSize: number | null;
   netAmount: number | null;
@@ -51,6 +53,8 @@ function toPayslipDTO(p: {
   id: string;
   periodMonth: number;
   periodYear: number;
+  liqNumber: string | null;
+  label: string | null;
   fileName: string;
   fileSize: number | null;
   netAmount: unknown;
@@ -61,6 +65,8 @@ function toPayslipDTO(p: {
     id: p.id,
     periodMonth: p.periodMonth,
     periodYear: p.periodYear,
+    liqNumber: p.liqNumber,
+    label: p.label,
     fileName: p.fileName,
     fileSize: p.fileSize,
     netAmount: p.netAmount ? Number(p.netAmount) : null,
@@ -176,6 +182,12 @@ export async function getEmployeeDetail(scope: Scope, employeeId: string) {
     cuil: employee.cuil,
     position: employee.position,
     isActive: employee.isActive,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    legajo: employee.legajo,
+    dni: employee.dni,
+    address: employee.address,
+    profileCompletedAt: employee.profileCompletedAt?.toISOString() ?? null,
     company: employee.company,
     access: employee.user
       ? {

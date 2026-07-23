@@ -10,6 +10,7 @@ export type SessionUser = {
   companyId: string | null;
   employeeId: string | null;
   mustChangePassword: boolean;
+  profilePending: boolean;
 };
 
 /** Devuelve la sesión o redirige al login. */
@@ -24,16 +25,19 @@ export async function requireUser(): Promise<SessionUser> {
     companyId: u.companyId,
     employeeId: u.employeeId,
     mustChangePassword: u.mustChangePassword,
+    profilePending: u.profilePending,
   };
 }
 
 /**
- * Usuario + alcance, con el cambio de contraseña forzado ya resuelto.
+ * Usuario + alcance, con los pasos de onboarding ya resueltos: primero la
+ * contraseña, después (si es empleado) completar el perfil.
  * Es el punto de entrada de todas las páginas privadas.
  */
 export async function requireSession(): Promise<{ user: SessionUser; scope: Scope }> {
   const user = await requireUser();
   if (user.mustChangePassword) redirect("/cambiar-clave");
+  if (user.profilePending) redirect("/completar-perfil");
   return { user, scope: scopeFor(user) };
 }
 

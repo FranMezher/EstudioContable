@@ -22,10 +22,13 @@ export function payslipPath(args: {
   periodYear: number;
   periodMonth: number;
   fileName: string;
+  /** Distingue recibos del mismo mes (nº de liquidación o timestamp). */
+  discriminator: string;
 }): string {
   const mes = String(args.periodMonth).padStart(2, "0");
   const ext = args.fileName.split(".").pop()?.toLowerCase() ?? "pdf";
-  return `payslips/${args.companyId}/${args.employeeId}/${args.periodYear}-${mes}.${ext}`;
+  const disc = args.discriminator.replace(/[^a-zA-Z0-9_-]/g, "") || String(Date.now());
+  return `payslips/${args.companyId}/${args.employeeId}/${args.periodYear}-${mes}-${disc}.${ext}`;
 }
 
 /** Sube un recibo y devuelve su pathname (no una URL pública). */

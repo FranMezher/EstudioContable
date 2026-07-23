@@ -35,7 +35,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
 
         const where = parseIdentifier(parsed.data.identifier);
-        const user = await prisma.user.findUnique({ where });
+        const user = await prisma.user.findUnique({
+          where,
+          include: { employee: { select: { profileCompletedAt: true } } },
+        });
         if (!user || !user.isActive) return null;
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
@@ -59,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           companyId: user.companyId,
           employeeId: user.employeeId,
           mustChangePassword: user.mustChangePassword,
+          profilePending: user.role === "EMPLOYEE" && !user.employee?.profileCompletedAt,
         };
       },
     }),

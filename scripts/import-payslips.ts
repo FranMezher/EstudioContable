@@ -37,6 +37,7 @@ type Reporte = {
   status: ItemStatus;
   message?: string;
   detectedCuil?: string | null;
+  detectedLegajo?: string | null;
   detectedCompany?: string | null;
   periodMonth?: number | null;
   periodYear?: number | null;
@@ -191,28 +192,32 @@ async function main() {
         fileName: rel,
         status: "ERROR",
         detectedCuil: detected.cuil,
-        detectedCompany: companyRef,
+        detectedLegajo: detected.legajo,
+        detectedCompany: companyRef ?? detected.employerCuit,
         periodMonth: detected.periodMonth,
         periodYear: detected.periodYear,
       };
 
-      if (!companyRef && me.scope === "studio") {
+      // La empresa puede salir de la carpeta (config) o del CUIT del empleador
+      // que viene dentro del PDF. Solo falla si no hay ninguno de los dos.
+      const tieneEmpresa = companyRef || detected.employerCuit;
+      if (!tieneEmpresa && me.scope === "studio") {
         reportes.push({
           ...base,
           status: "SIN_EMPRESA",
-          message: `No pude deducir la empresa de "${rel}". Agregá la carpeta a import.config.json.`,
+          message: `No pude identificar la empresa de "${rel}" (ni por carpeta ni por CUIT del PDF).`,
         });
         console.log(`  ✗ ${rel} — sin empresa`);
         continue;
       }
 
-      if (!detected.cuil) {
+      if (!detected.cuil && !detected.legajo) {
         reportes.push({
           ...base,
           status: "SIN_EMPLEADO",
-          message: "No encontré el CUIL ni en el nombre del archivo ni en el texto del PDF.",
+          message: "No encontré CUIL ni legajo en el nombre ni en el texto del PDF.",
         });
-        console.log(`  ✗ ${rel} — sin CUIL`);
+        console.log(`  ✗ ${rel} — sin CUIL ni legajo`);
         continue;
       }
 
@@ -220,7 +225,7 @@ async function main() {
         reportes.push({
           ...base,
           status: "SIN_PERIODO",
-          message: "No pude determinar el mes y año del recibo.",
+          message: "No pude determinar el mes y año (¿PDF escaneado sin texto?).",
         });
         console.log(`  ✗ ${rel} — sin período`);
         continue;
@@ -228,19 +233,24 @@ async function main() {
 
       if (args.dryRun) {
         console.log(
-          `  · ${rel} → CUIL ${detected.cuil}, ${detected.periodMonth}/${detected.periodYear}` +
-            `, empresa ${companyRef ?? "(la de la key)"} [${detected.from}]`
+          `  · ${rel} → Leg ${detected.legajo ?? "?"} / CUIL ${detected.cuil ?? "?"}, ` +
+            `${detected.periodMonth}/${detected.periodYear}, Liq ${detected.liqNumber ?? "?"}, ` +
+            `neto ${detected.netAmount ?? "?"}, empresa ${companyRef ?? detected.employerCuit ?? "(key)"} [${detected.from}]`
         );
         continue;
       }
 
       const res = await api.importPayslip({
         companyRef,
+        employerCuit: detected.employerCuit,
         cuil: detected.cuil,
+        legajo: detected.legajo,
+        dni: detected.dni,
         employeeName: detected.employeeName,
         periodMonth: detected.periodMonth,
         periodYear: detected.periodYear,
         netAmount: detected.netAmount,
+        liqNumber: detected.liqNumber,
         fileBase64: buffer.toString("base64"),
         fileName,
         sourceHash,

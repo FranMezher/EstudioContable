@@ -105,6 +105,8 @@ export type EmployeeInput = {
   name: string;
   cuil: string;
   position?: string | null;
+  legajo?: string | null;
+  dni?: string | null;
 };
 
 export async function svcCreateEmployee(actor: Actor, input: EmployeeInput, opts?: { autoCreated?: boolean }) {
@@ -124,32 +126,114 @@ export async function svcCreateEmployee(actor: Actor, input: EmployeeInput, opts
   });
   if (dup) throw new ServiceError("Ya hay un empleado con ese CUIL en esta empresa");
 
+  const legajo = input.legajo?.trim() || null;
+  if (legajo) await assertLegajoLibre(companyId, legajo);
+
   return prisma.employee.create({
     data: {
       companyId,
       name,
       cuil,
       position: input.position?.trim() || null,
+      legajo,
+      dni: input.dni ? normalizeCuil(input.dni) || null : null,
       autoCreated: opts?.autoCreated ?? false,
     },
   });
 }
 
+/** Nombre para mostrar a partir de apellido + nombre (formato "APELLIDO Nombre"). */
+function displayName(lastName?: string | null, firstName?: string | null, fallback = "") {
+  const armado = [lastName?.trim(), firstName?.trim()].filter(Boolean).join(" ");
+  return armado || fallback;
+}
+
+export type PersonalDataInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  legajo?: string | null;
+  dni?: string | null;
+  address?: string | null;
+};
+
+/** Solo el admin edita los datos personales del empleado. */
 export async function svcUpdateEmployee(
   actor: Actor,
   employeeId: string,
-  input: { name?: string; position?: string | null; isActive?: boolean }
+  input: PersonalDataInput & { position?: string | null; isActive?: boolean }
 ) {
   assertCanWrite(actor.scope);
-  await findEmployeeInScope(actor.scope, employeeId);
+  const current = await findEmployeeInScope(actor.scope, employeeId);
+
+  const firstName = input.firstName !== undefined ? input.firstName?.trim() || null : current.firstName;
+  const lastName = input.lastName !== undefined ? input.lastName?.trim() || null : current.lastName;
+  const legajo = input.legajo !== undefined ? (input.legajo?.trim() || null) : undefined;
+  const dni = input.dni !== undefined ? normalizeCuil(input.dni) || null : undefined;
+
+  if (legajo) await assertLegajoLibre(current.companyId, legajo, employeeId);
+
   return prisma.employee.update({
     where: { id: employeeId },
     data: {
-      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.firstName !== undefined || input.lastName !== undefined
+        ? { firstName, lastName, name: displayName(lastName, firstName, current.name) }
+        : {}),
+      ...(legajo !== undefined ? { legajo } : {}),
+      ...(dni !== undefined ? { dni } : {}),
+      ...(input.address !== undefined ? { address: input.address?.trim() || null } : {}),
       ...(input.position !== undefined ? { position: input.position?.trim() || null } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       // Si un admin lo edita, deja de estar pendiente de revisión.
       autoCreated: false,
+    },
+  });
+}
+
+async function assertLegajoLibre(companyId: string, legajo: string, exceptEmployeeId?: string) {
+  const dup = await prisma.employee.findUnique({
+    where: { companyId_legajo: { companyId, legajo } },
+    select: { id: true },
+  });
+  if (dup && dup.id !== exceptEmployeeId)
+    throw new ServiceError("Ya hay un empleado con ese legajo en esta empresa");
+}
+
+/**
+ * El empleado completa su perfil en el primer ingreso. Es una excepción
+ * controlada a "el empleado no escribe": solo toca SU propio legajo, una
+ * sola vez, y nunca más puede modificarlo (después es tarea del admin).
+ */
+export async function svcCompleteMyProfile(
+  userId: string,
+  input: Required<Pick<PersonalDataInput, "firstName" | "lastName" | "dni">> & PersonalDataInput
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { employee: true },
+  });
+  if (user?.role !== "EMPLOYEE" || !user.employee) throw new ServiceError("No autorizado", 403);
+  if (user.employee.profileCompletedAt)
+    throw new ServiceError("Tu perfil ya fue cargado. Si hay un error, avisale al estudio.", 409);
+
+  const firstName = input.firstName?.trim();
+  const lastName = input.lastName?.trim();
+  const dni = normalizeCuil(input.dni);
+  if (!firstName || !lastName) throw new ServiceError("Completá nombre y apellido");
+  if (dni.length < 7) throw new ServiceError("El DNI no parece válido");
+
+  const legajo = input.legajo?.trim() || null;
+  if (legajo) await assertLegajoLibre(user.employee.companyId, legajo, user.employee.id);
+
+  await prisma.employee.update({
+    where: { id: user.employee.id },
+    data: {
+      firstName,
+      lastName,
+      dni,
+      legajo,
+      address: input.address?.trim() || null,
+      name: displayName(lastName, firstName, user.employee.name),
+      profileCompletedAt: new Date(),
     },
   });
 }
@@ -165,6 +249,8 @@ export type PayslipInput = {
   file: Buffer | File;
   fileName: string;
   netAmount?: number | null;
+  liqNumber?: string | null;
+  label?: string | null;
   sourceHash?: string | null;
   source?: PayslipSource;
 };
@@ -176,26 +262,27 @@ function validatePeriod(month: number, year: number) {
     throw new ServiceError("El año del período no es válido");
 }
 
+/**
+ * Carga un recibo. Un empleado puede tener VARIOS en el mismo mes (sueldo,
+ * SAC, bonos): la unicidad es por número de liquidación, no por período.
+ */
 export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
   assertCanWrite(actor.scope);
   const employee = await findEmployeeInScope(actor.scope, input.employeeId);
   validatePeriod(input.periodMonth, input.periodYear);
 
-  const existing = await prisma.payslip.findUnique({
-    where: {
-      employeeId_periodYear_periodMonth: {
-        employeeId: employee.id,
-        periodYear: input.periodYear,
-        periodMonth: input.periodMonth,
-      },
-    },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new ServiceError(
-      `${employee.name} ya tiene un recibo cargado para ${periodoLabel(input.periodMonth, input.periodYear)}`,
-      409
-    );
+  const liqNumber = input.liqNumber?.trim() || null;
+  if (liqNumber) {
+    const existing = await prisma.payslip.findUnique({
+      where: { employeeId_liqNumber: { employeeId: employee.id, liqNumber } },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ServiceError(
+        `${employee.name} ya tiene cargada la liquidación ${liqNumber}`,
+        409
+      );
+    }
   }
 
   const path = payslipPath({
@@ -204,6 +291,8 @@ export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
     periodYear: input.periodYear,
     periodMonth: input.periodMonth,
     fileName: input.fileName,
+    // El discriminador evita pisar otro recibo del mismo mes.
+    discriminator: liqNumber ?? String(Date.now()),
   });
   const { path: filePath, size } = await uploadPayslipFile(input.file, path);
 
@@ -212,6 +301,8 @@ export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
       employeeId: employee.id,
       periodYear: input.periodYear,
       periodMonth: input.periodMonth,
+      liqNumber,
+      label: input.label?.trim() || null,
       filePath,
       fileName: input.fileName,
       fileSize: size,

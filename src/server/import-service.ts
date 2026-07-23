@@ -12,12 +12,20 @@ import type { ImportItemStatus } from "@/generated/prisma/enums";
 export type ImportPayslipInput = {
   /** Id o CUIT de la empresa. Se ignora si la key ya está limitada a una. */
   companyRef?: string | null;
-  cuil: string;
-  /** Nombre para dar de alta al empleado si el CUIL todavía no existe. */
+  /** CUIT del empleador leído del PDF. Sirve para resolver la empresa sola. */
+  employerCuit?: string | null;
+  /** CUIL del empleado (del PDF). Es el matcheo principal. */
+  cuil?: string | null;
+  /** Legajo (del nombre del archivo o del PDF). Matcheo secundario. */
+  legajo?: string | null;
+  dni?: string | null;
+  /** Nombre para dar de alta al empleado si no existe todavía. */
   employeeName?: string | null;
   periodMonth: number;
   periodYear: number;
   netAmount?: number | null;
+  /** Número de liquidación. Distingue recibos del mismo mes y da idempotencia. */
+  liqNumber?: string | null;
   file: Buffer;
   fileName: string;
   sourceHash: string;
@@ -30,24 +38,36 @@ export type ImportPayslipResult = {
   employeeCreated: boolean;
 };
 
-/** Resuelve la empresa por id o por CUIT, siempre dentro del alcance. */
-async function resolveCompany(actor: Actor, ref?: string | null) {
+/**
+ * Resuelve la empresa, siempre dentro del alcance. Con una key de estudio la
+ * busca por (en orden): companyRef explícito, o el CUIT del empleador del PDF.
+ */
+async function resolveCompany(actor: Actor, input: ImportPayslipInput) {
   if (actor.scope.kind !== "studio") {
-    // La key está limitada: la empresa la fija el alcance, no el body.
     const company = await prisma.company.findUnique({ where: { id: actor.scope.companyId } });
     if (!company) throw new ServiceError("No encontrado", 404);
     return company;
   }
 
-  if (!ref?.trim()) throw new ServiceError("Falta indicar la empresa (companyRef)", 400);
-  const value = ref.trim();
-  const cuit = normalizeCuil(value);
+  const ref = input.companyRef?.trim();
+  if (ref) {
+    const cuit = normalizeCuil(ref);
+    const company = await prisma.company.findFirst({
+      where: cuit.length === 11 ? { OR: [{ id: ref }, { cuit }] } : { id: ref },
+    });
+    if (company) return company;
+  }
 
-  const company = await prisma.company.findFirst({
-    where: cuit.length === 11 ? { OR: [{ id: value }, { cuit }] } : { id: value },
-  });
-  if (!company) throw new ServiceError(`No existe la empresa "${value}"`, 404);
-  return company;
+  const employerCuit = normalizeCuil(input.employerCuit);
+  if (employerCuit.length === 11) {
+    const company = await prisma.company.findUnique({ where: { cuit: employerCuit } });
+    if (company) return company;
+  }
+
+  throw new ServiceError(
+    `No pude identificar la empresa (companyRef "${ref ?? ""}", CUIT empleador "${employerCuit || "?"}")`,
+    404
+  );
 }
 
 export async function svcImportPayslip(
@@ -56,13 +76,18 @@ export async function svcImportPayslip(
 ): Promise<ImportPayslipResult> {
   assertCanWrite(actor.scope);
 
-  const company = await resolveCompany(actor, input.companyRef);
+  const company = await resolveCompany(actor, input);
 
   const cuil = normalizeCuil(input.cuil);
-  if (!isValidCuil(cuil)) throw new ServiceError(`El CUIL "${input.cuil}" no es válido`, 400);
+  const legajo = input.legajo?.trim() || null;
+  if (!cuil && !legajo) {
+    throw new ServiceError("El recibo no trae ni CUIL ni legajo para identificar al empleado", 400);
+  }
+  if (cuil && !isValidCuil(cuil)) {
+    throw new ServiceError(`El CUIL "${input.cuil}" no es válido`, 400);
+  }
 
-  // Un mismo archivo ya importado no se vuelve a cargar, aunque se re-corra
-  // el importador sobre la misma carpeta.
+  // Un mismo archivo ya importado no se vuelve a cargar (idempotencia por hash).
   const yaImportado = await prisma.payslip.findFirst({
     where: { sourceHash: input.sourceHash, employee: { companyId: company.id } },
     select: { id: true, employeeId: true },
@@ -76,45 +101,50 @@ export async function svcImportPayslip(
     };
   }
 
-  let employee = await prisma.employee.findUnique({
-    where: { companyId_cuil: { companyId: company.id, cuil } },
-  });
+  // Matcheo del empleado: primero por CUIL (único global), después por legajo.
+  let employee =
+    (cuil
+      ? await prisma.employee.findUnique({ where: { companyId_cuil: { companyId: company.id, cuil } } })
+      : null) ??
+    (legajo
+      ? await prisma.employee.findUnique({ where: { companyId_legajo: { companyId: company.id, legajo } } })
+      : null);
   let employeeCreated = false;
 
   if (!employee) {
+    if (!cuil) {
+      throw new ServiceError(
+        `El legajo ${legajo} no existe en ${company.name} y sin CUIL no puedo darlo de alta`,
+        404
+      );
+    }
     if (!input.employeeName?.trim()) {
       throw new ServiceError(
         `El CUIL ${cuil} no existe en ${company.name} y no vino el nombre para darlo de alta`,
         404
       );
     }
-    // Se crea marcado como autoCreated: queda pendiente de revisión del
-    // estudio, y NO se le genera acceso al portal automáticamente.
+    // Alta automática: queda pendiente de revisión del estudio y NO se le
+    // genera acceso al portal solo.
     employee = await svcCreateEmployee(
       actor,
-      { companyId: company.id, name: input.employeeName, cuil },
+      { companyId: company.id, name: input.employeeName, cuil, legajo, dni: input.dni ?? null },
       { autoCreated: true }
     );
     employeeCreated = true;
   }
 
-  const existente = await prisma.payslip.findUnique({
-    where: {
-      employeeId_periodYear_periodMonth: {
-        employeeId: employee.id,
-        periodYear: input.periodYear,
-        periodMonth: input.periodMonth,
-      },
-    },
-    select: { id: true },
-  });
-  if (existente) {
-    return {
-      status: "DUPLICADO",
-      payslipId: existente.id,
-      employeeId: employee.id,
-      employeeCreated,
-    };
+  // Misma liquidación ya cargada para este empleado → duplicado (permite
+  // varios recibos por mes mientras la liquidación sea distinta).
+  const liqNumber = input.liqNumber?.trim() || null;
+  if (liqNumber) {
+    const existente = await prisma.payslip.findUnique({
+      where: { employeeId_liqNumber: { employeeId: employee.id, liqNumber } },
+      select: { id: true },
+    });
+    if (existente) {
+      return { status: "DUPLICADO", payslipId: existente.id, employeeId: employee.id, employeeCreated };
+    }
   }
 
   const payslip = await svcCreatePayslip(actor, {
@@ -124,6 +154,7 @@ export async function svcImportPayslip(
     file: input.file,
     fileName: input.fileName,
     netAmount: input.netAmount ?? null,
+    liqNumber,
     sourceHash: input.sourceHash,
     source: "IMPORT",
   });
@@ -155,6 +186,7 @@ export type ImportItemInput = {
   status: ImportItemStatus;
   message?: string | null;
   detectedCuil?: string | null;
+  detectedLegajo?: string | null;
   detectedCompany?: string | null;
   periodMonth?: number | null;
   periodYear?: number | null;
@@ -180,6 +212,7 @@ export async function svcFinishImportRun(
         status: i.status,
         message: i.message?.slice(0, 500) ?? null,
         detectedCuil: i.detectedCuil ?? null,
+        detectedLegajo: i.detectedLegajo ?? null,
         detectedCompany: i.detectedCompany ?? null,
         periodMonth: i.periodMonth ?? null,
         periodYear: i.periodYear ?? null,

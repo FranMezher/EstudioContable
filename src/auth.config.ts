@@ -19,11 +19,15 @@ export const authConfig = {
         token.companyId = user.companyId ?? null;
         token.employeeId = user.employeeId ?? null;
         token.mustChangePassword = user.mustChangePassword ?? false;
+        token.profilePending = user.profilePending ?? false;
       }
-      // Al cambiar la contraseña, la pantalla llama a update() para que el
-      // token deje de exigir el cambio sin tener que volver a loguearse.
+      // Las pantallas de onboarding llaman a update() para bajar estos flags
+      // sin obligar a volver a loguearse.
       if (trigger === "update" && session?.mustChangePassword === false) {
         token.mustChangePassword = false;
+      }
+      if (trigger === "update" && session?.profilePending === false) {
+        token.profilePending = false;
       }
       return token;
     },
@@ -34,6 +38,7 @@ export const authConfig = {
         session.user.companyId = (token.companyId as string | null) ?? null;
         session.user.employeeId = (token.employeeId as string | null) ?? null;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.profilePending = Boolean(token.profilePending);
       }
       return session;
     },

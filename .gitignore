@@ -48,3 +48,8 @@ next-env.d.ts
 
 # mapa carpeta -> empresa del importador (es específico de cada instalación)
 /scripts/import.config.json
+
+# Recibos de sueldo: contienen datos personales reales, nunca van al repo
+*.pdf
+*.PDF
+/ejemplos-recibos/

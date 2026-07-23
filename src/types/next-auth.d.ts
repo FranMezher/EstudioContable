@@ -7,6 +7,7 @@ declare module "next-auth" {
     companyId?: string | null;
     employeeId?: string | null;
     mustChangePassword?: boolean;
+    profilePending?: boolean;
   }
 
   interface Session {
@@ -16,6 +17,7 @@ declare module "next-auth" {
       companyId: string | null;
       employeeId: string | null;
       mustChangePassword: boolean;
+      profilePending: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -27,5 +29,6 @@ declare module "next-auth/jwt" {
     companyId: string | null;
     employeeId: string | null;
     mustChangePassword: boolean;
+    profilePending: boolean;
   }
 }

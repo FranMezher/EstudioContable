@@ -72,10 +72,23 @@ model Employee {
   id        String   @id @default(cuid())
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Nombre completo para mostrar. Se arma de firstName + lastName cuando están.
   name      String
   cuil      String // solo dígitos, normalizado
   position  String?
   isActive  Boolean  @default(true)
+
+  // --- Datos personales ---
+  // Los carga el empleado una sola vez en su primer ingreso, o el admin.
+  // Después el empleado no puede modificarlos: solo el admin.
+  firstName String? // Nombre/s
+  lastName  String? // Apellido
+  legajo    String? // Número de legajo (identifica el recibo en el archivo)
+  dni       String? // solo dígitos
+  address   String?
+  /// Marca que el empleado completó su perfil. Null = todavía pendiente.
+  profileCompletedAt DateTime?
+
   /// Creado automáticamente por el importador: el estudio lo tiene que revisar.
   autoCreated Boolean @default(false)
   createdAt DateTime @default(now())
@@ -86,6 +99,7 @@ model Employee {
   importItems ImportItem[]
 
   @@unique([companyId, cuil])
+  @@unique([companyId, legajo])
   @@index([companyId, name])
 }
 
@@ -123,12 +137,19 @@ model User {
 // ---------------------------------------------------------------------------
 
 /// Recibo de sueldo de un empleado para un período.
+/// Un empleado puede tener VARIOS recibos en el mismo mes (sueldo, SAC,
+/// bonos, etc.), cada uno con su número de liquidación.
 model Payslip {
   id          String   @id @default(cuid())
   employeeId  String
   employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   periodMonth Int // 1-12
   periodYear  Int
+
+  /// Número de liquidación (ej: 1207). Distingue recibos del mismo mes.
+  liqNumber String?
+  /// Etiqueta corta para diferenciar en la UI cuando hay varios en el mes.
+  label     String?
 
   /// Pathname del archivo en Vercel Blob PRIVADO. No es una URL pública:
   /// solo se puede leer a través de /api/files/payslip/[id], que valida sesión.
@@ -147,7 +168,10 @@ model Payslip {
 
   importItems ImportItem[]
 
-  @@unique([employeeId, periodYear, periodMonth])
+  // Idempotencia del importador: un mismo legajo no puede tener dos veces la
+  // misma liquidación. liqNumber null (carga manual) no participa del unique,
+  // así que la carga manual admite varios por mes sin restricción.
+  @@unique([employeeId, liqNumber])
   @@index([employeeId, periodYear, periodMonth])
   @@index([sourceHash])
 }
@@ -193,6 +217,7 @@ model ImportItem {
 
   /// Lo que se pudo extraer del archivo, aunque no haya alcanzado para asignarlo.
   detectedCuil    String?
+  detectedLegajo  String?
   detectedCompany String?
   periodMonth     Int?
   periodYear      Int?

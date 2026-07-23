@@ -41,6 +41,7 @@ export function PayslipList({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-800">
               {periodoLabel(p.periodMonth, p.periodYear)}
+              {p.label ? ` · ${p.label}` : p.liqNumber ? ` · Liq. ${p.liqNumber}` : ""}
             </p>
             <p className="text-xs text-slate-500">
               {p.netAmount != null ? `Neto: ${formatMoney(p.netAmount)}` : "Recibo de sueldo"}

@@ -6,11 +6,15 @@ const MAX_ITEMS = 50;
 
 type Item = {
   companyRef?: string;
-  cuil: string;
+  employerCuit?: string;
+  cuil?: string;
+  legajo?: string;
+  dni?: string;
   employeeName?: string;
   periodMonth: number;
   periodYear: number;
   netAmount?: number;
+  liqNumber?: string;
   fileBase64: string;
   fileName: string;
   sourceHash: string;
@@ -44,11 +48,15 @@ export const POST = withApi(async ({ actor, req }) => {
     try {
       const res = await svcImportPayslip(actor, {
         companyRef: item.companyRef ?? null,
-        cuil: item.cuil,
+        employerCuit: item.employerCuit ?? null,
+        cuil: item.cuil ?? null,
+        legajo: item.legajo ?? null,
+        dni: item.dni ?? null,
         employeeName: item.employeeName ?? null,
         periodMonth: Number(item.periodMonth),
         periodYear: Number(item.periodYear),
         netAmount: item.netAmount != null ? Number(item.netAmount) : null,
+        liqNumber: item.liqNumber ?? null,
         file: decodeBase64File(item.fileBase64),
         fileName: item.fileName,
         sourceHash: item.sourceHash,
