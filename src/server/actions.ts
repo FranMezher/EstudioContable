@@ -15,6 +15,7 @@ import {
   svcUpdateEmployee,
   svcChangeOwnPassword,
   svcCompleteMyProfile,
+  svcSetPayslipPaid,
 } from "@/server/services";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -193,6 +194,16 @@ export async function deletePayslip(payslipId: string): Promise<ActionState> {
     return { ok: true };
   } catch (e) {
     return fail(e, "No se pudo eliminar el recibo");
+  }
+}
+
+export async function setPayslipPaid(payslipId: string, paid: boolean): Promise<ActionState> {
+  try {
+    await svcSetPayslipPaid(await getSessionScope(), payslipId, paid);
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo actualizar el estado de pago");
   }
 }
 

@@ -5,6 +5,7 @@ import {
   Receipt,
   Settings,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/generated/prisma/enums";
@@ -24,6 +25,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   COMPANY_ADMIN: [
     { href: "/empresa", label: "Empleados", icon: Users },
+    { href: "/empresa/pagos", label: "Pagos", icon: Wallet },
     { href: "/empresa/accesos", label: "Accesos", icon: Settings },
   ],
   // El empleado no necesita menú: entra directo a lo único que puede ver.

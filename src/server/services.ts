@@ -339,6 +339,19 @@ export async function svcDeletePayslip(actor: Actor, payslipId: string) {
   await deleteFile(payslip.filePath);
 }
 
+/** El admin tilda un recibo como pagado (o lo destilda). */
+export async function svcSetPayslipPaid(actor: Actor, payslipId: string, paid: boolean) {
+  assertCanWrite(actor.scope);
+  const payslip = await findPayslipInScope(actor.scope, payslipId);
+  return prisma.payslip.update({
+    where: { id: payslip.id },
+    data: {
+      paidAt: paid ? new Date() : null,
+      paidById: paid ? actor.userId : null,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // USUARIOS
 // ---------------------------------------------------------------------------

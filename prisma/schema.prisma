@@ -159,6 +159,10 @@ model Payslip {
 
   netAmount Decimal? @db.Decimal(14, 2)
 
+  /// Marca de pago: el admin lo tilda cuando ya le pagó al empleado.
+  paidAt   DateTime?
+  paidById String?
+
   /// SHA-256 del archivo original. Le da idempotencia al importador.
   sourceHash String?
   source     PayslipSource @default(MANUAL)

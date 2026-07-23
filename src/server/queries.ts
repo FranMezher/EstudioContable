@@ -224,14 +224,87 @@ export async function getMyPayslips(scope: Scope) {
 }
 
 /** Años con al menos un recibo, para los filtros de período. */
-export async function getAvailableYears(scope: Scope): Promise<number[]> {
+export async function getAvailableYears(scope: Scope, companyId?: string): Promise<number[]> {
   const rows = await prisma.payslip.findMany({
-    where: payslipWhere(scope),
+    where: scoped(payslipWhere(scope), companyId ? { employee: { companyId } } : undefined),
     distinct: ["periodYear"],
     select: { periodYear: true },
     orderBy: { periodYear: "desc" },
   });
   return rows.map((r) => r.periodYear);
+}
+
+// ---------------------------------------------------------------------------
+// PAGOS
+// ---------------------------------------------------------------------------
+
+export type PaymentFilter = { companyId?: string; year: number; months?: number[] };
+
+function paymentWhere(scope: Scope, filter: PaymentFilter) {
+  return scoped(
+    payslipWhere(scope),
+    { periodYear: filter.year },
+    filter.months && filter.months.length > 0 ? { periodMonth: { in: filter.months } } : undefined,
+    filter.companyId ? { employee: { companyId: filter.companyId } } : undefined
+  );
+}
+
+export type PaymentRow = {
+  id: string;
+  employeeName: string;
+  legajo: string | null;
+  periodMonth: number;
+  periodYear: number;
+  liqNumber: string | null;
+  netAmount: number | null;
+  paid: boolean;
+};
+
+/** Filas de la tabla de pagos: quién, cuánto y si ya se pagó. */
+export async function getPaymentRows(scope: Scope, filter: PaymentFilter) {
+  const rows = await prisma.payslip.findMany({
+    where: paymentWhere(scope, filter),
+    orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }, { employee: { name: "asc" } }],
+    include: { employee: { select: { name: true, legajo: true } } },
+  });
+
+  const items: PaymentRow[] = rows.map((p) => ({
+    id: p.id,
+    employeeName: p.employee.name,
+    legajo: p.employee.legajo,
+    periodMonth: p.periodMonth,
+    periodYear: p.periodYear,
+    liqNumber: p.liqNumber,
+    netAmount: p.netAmount ? Number(p.netAmount) : null,
+    paid: !!p.paidAt,
+  }));
+
+  const total = items.reduce((acc, r) => acc + (r.netAmount ?? 0), 0);
+  const totalPagado = items.filter((r) => r.paid).reduce((acc, r) => acc + (r.netAmount ?? 0), 0);
+
+  return {
+    items,
+    total,
+    totalPagado,
+    totalPendiente: total - totalPagado,
+    count: items.length,
+    pendientes: items.filter((r) => !r.paid).length,
+  };
+}
+
+/** Recibos (con filePath) para armar el ZIP. Solo server-side. */
+export async function getPayslipsForZip(scope: Scope, filter: PaymentFilter) {
+  return prisma.payslip.findMany({
+    where: paymentWhere(scope, filter),
+    orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+    select: {
+      filePath: true,
+      periodMonth: true,
+      periodYear: true,
+      liqNumber: true,
+      employee: { select: { name: true, legajo: true } },
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
