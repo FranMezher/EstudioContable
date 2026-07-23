@@ -1,37 +1,27 @@
-# API REST — Estudio Mezher Pampin
+# API REST — Mezher Pampin
 
-API para integraciones y carga masiva. Base URL: `https://TU-APP.vercel.app/api/v1`
-(en local: `http://localhost:3000/api/v1`).
+API para el importador de recibos y otras integraciones.
+Base URL: `https://TU-APP.vercel.app/api/v1` (en local: `http://localhost:3000/api/v1`).
 
 ## Autenticación
-
-Todas las peticiones requieren una **API key** en el header:
 
 ```
 Authorization: Bearer mp_live_xxxxxxxxxxxxxxxxxxxx
 ```
 
-Las API keys se generan desde el panel admin → **Configuración → API keys**. Hay dos alcances:
+Las keys se generan en **Configuración → API keys** del panel del estudio. Hay dos alcances:
 
-- **Acceso total**: puede operar sobre todos los clientes y crear clientes nuevos.
-- **Limitada a un cliente**: solo puede leer/escribir datos de ese cliente.
+- **Acceso total**: opera sobre todas las empresas y puede crear empresas y empleados. Es la que necesita el importador.
+- **Limitada a una empresa**: solo lee y escribe datos de esa empresa. Cualquier `companyRef` que mande el cliente se ignora — manda el alcance de la key.
 
-> La clave completa se muestra **una sola vez** al crearla. Guardala en un lugar seguro.
+> La clave completa se muestra **una sola vez** al crearla.
 
 ## Formato de respuestas
 
 - Éxito: `{ "data": ... }`
 - Error: `{ "error": { "message": "..." } }`
-- Lotes (`/bulk`): `{ "data": { "createdCount", "errorCount", "created": [...], "errors": [{ "index", "message" }] } }` (HTTP 207)
 
-Códigos: `200/201` ok · `207` lote parcial · `400` datos inválidos · `401` sin key/ inválida · `403` sin permiso · `404` no existe.
-
-## Archivos (PDFs)
-
-Los endpoints que adjuntan archivos aceptan **una** de estas dos formas en el body:
-
-- `"fileUrl": "https://..."` — referencia a un archivo ya hosteado.
-- `"fileBase64": "<contenido>", "fileName": "recibo.pdf"` — se sube a Vercel Blob.
+Códigos: `200/201` ok · `207` lote con resultados mixtos · `400` datos inválidos · `401` sin key o inválida · `403` sin permiso · `404` no existe (también cuando el recurso está fuera del alcance de la key).
 
 ---
 
@@ -41,52 +31,64 @@ Los endpoints que adjuntan archivos aceptan **una** de estas dos formas en el bo
 ```
 GET /me
 ```
+Devuelve `{ scope: "studio", companies }` o `{ scope: "company", company }`.
 
-### Clientes
+### Empresas
 ```
-GET  /clients                      # lista (acotada al alcance de la key)
-POST /clients                      # crear (solo acceso total)
-GET  /clients/:id                  # detalle + conteos
+GET  /companies?q=texto
+POST /companies                 # solo con acceso total
 ```
-Body de `POST /clients`: `{ "name", "cuit?", "email?", "phone?" }`
+Body del POST: `{ "name", "cuit?", "email?", "phone?" }`
 
-### Declaraciones Juradas
+### Empleados
 ```
-GET  /clients/:id/declarations?type=IVA&year=2026
-POST /clients/:id/declarations
-POST /clients/:id/declarations/bulk
+GET  /companies/:id/employees
+POST /companies/:id/employees   # { "name", "cuil", "position?" }
 ```
-Body: `{ "type": "IVA|IIBB|GANANCIAS|BALANCES", "periodYear", "periodMonth?", "notes?", + archivo }`
-Bulk: `{ "items": [ { ...mismos campos... } ] }` (máx. 200)
+El CUIL es obligatorio y se valida el dígito verificador.
 
-### Sindicatos
-```
-GET    /clients/:id/union-items?paid=false
-POST   /clients/:id/union-items
-PATCH  /union-items/:id            # { "isPaid": true|false }
-DELETE /union-items/:id
-```
-Body de POST: `{ "title", "periodYear", "periodMonth?", "amount?", "description?", + archivo opcional }`
+### Importar recibos
 
-### Empleados y Recibos
-```
-GET  /clients/:id/employees
-POST /clients/:id/employees                  # { "name", "cuil?", "position?" }
-GET  /employees/:id/payslips
-POST /employees/:id/payslips
-POST /employees/:id/payslips/bulk
-```
-Body recibo: `{ "periodYear", "periodMonth", "netAmount?", + archivo }`
+Es el endpoint que usa el script de la carpeta mensual. A diferencia de una carga normal, no hace falta conocer el id del empleado: se resuelve por CUIL dentro de la empresa.
 
-### Consultas
 ```
-GET  /clients/:id/inquiries
-POST /clients/:id/inquiries                  # { "subject", "message" }
+POST /payslips/import
+POST /payslips/import/bulk      # hasta 50 por lote
 ```
+
+Body:
+```json
+{
+  "companyRef": "30707429561",
+  "cuil": "20285478291",
+  "employeeName": "Martín Sosa",
+  "periodMonth": 6,
+  "periodYear": 2026,
+  "netAmount": 850000.00,
+  "fileBase64": "JVBERi0...",
+  "fileName": "recibo.pdf",
+  "sourceHash": "sha256 del archivo"
+}
+```
+
+- `companyRef`: id o CUIT de la empresa. Se ignora si la key ya está limitada a una.
+- `employeeName`: se usa solo si el CUIL todavía no existe. En ese caso se da de alta al empleado marcado como "creado automáticamente", para que el estudio lo revise. **No se le crea acceso al portal**: eso lo confirma siempre una persona.
+- `sourceHash`: SHA-256 del archivo. Es lo que hace idempotente al importador — si ese hash ya está cargado, la respuesta es `DUPLICADO` y no se sube nada.
+
+Respuesta: `{ "status": "OK" | "DUPLICADO", "payslipId", "employeeId", "employeeCreated" }`
+
+El `bulk` devuelve `207` con el resultado archivo por archivo: uno que falla no frena a los demás.
+
+### Registro de corridas
+```
+POST /import-runs                 # { "sourceLabel", "isDryRun?" } → { id }
+POST /import-runs/:id/finish      # { "items": [...] }
+```
+Alimentan la pantalla *Estudio → Importaciones*. El script las llama solo.
 
 ---
 
-## Ejemplos (curl)
+## Ejemplos
 
 Probar la conexión:
 ```bash
@@ -94,21 +96,21 @@ curl https://TU-APP.vercel.app/api/v1/me \
   -H "Authorization: Bearer mp_live_xxx"
 ```
 
-Cargar una declaración (con URL de archivo):
+Subir un recibo:
 ```bash
-curl -X POST https://TU-APP.vercel.app/api/v1/clients/CLIENT_ID/declarations \
+curl -X POST https://TU-APP.vercel.app/api/v1/payslips/import \
   -H "Authorization: Bearer mp_live_xxx" \
   -H "Content-Type: application/json" \
-  -d '{"type":"IVA","periodYear":2026,"periodMonth":5,"fileUrl":"https://.../iva.pdf"}'
+  -d "{\"companyRef\":\"30707429561\",\"cuil\":\"20285478291\",\"periodMonth\":6,\"periodYear\":2026,\"fileBase64\":\"JVBERi0...\",\"fileName\":\"recibo.pdf\",\"sourceHash\":\"abc123\"}"
 ```
 
-Carga masiva de recibos (base64):
-```bash
-curl -X POST https://TU-APP.vercel.app/api/v1/employees/EMP_ID/payslips/bulk \
-  -H "Authorization: Bearer mp_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"items":[
-        {"periodYear":2026,"periodMonth":5,"fileBase64":"JVBERi0...","fileName":"r1.pdf"},
-        {"periodYear":2026,"periodMonth":6,"fileBase64":"JVBERi0...","fileName":"r2.pdf"}
-      ]}'
+## Descarga de recibos
+
+Los PDFs **no** se sirven por esta API ni por una URL pública. Viven en almacenamiento privado y el único camino es:
+
 ```
+GET /api/files/payslip/:id            # ver en el navegador
+GET /api/files/payslip/:id?download=1 # descargar
+```
+
+Esa ruta usa la **sesión web**, no API keys, y valida en cada pedido que el recibo esté dentro del alcance del usuario. Un recibo ajeno devuelve 404.

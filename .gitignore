@@ -45,3 +45,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# mapa carpeta -> empresa del importador (es específico de cada instalación)
+/scripts/import.config.json

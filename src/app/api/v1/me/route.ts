@@ -1,19 +1,15 @@
-import { withApi, ok } from "@/server/api/http";
 import { prisma } from "@/lib/prisma";
+import { ok, withApi } from "@/server/api/http";
 
-// GET /api/v1/me — info del scope de la API key (útil para probar la conexión)
+/** Prueba de conexión: dice qué alcance tiene la key. */
 export const GET = withApi(async ({ actor }) => {
-  const client = actor.clientId
-    ? await prisma.client.findUnique({
-        where: { id: actor.clientId },
-        select: { id: true, name: true },
-      })
-    : null;
-
-  return ok({
-    scope: actor.role === "ADMIN" ? "full" : "client",
-    role: actor.role,
-    clientId: actor.clientId,
-    client,
+  if (actor.scope.kind === "studio") {
+    const companies = await prisma.company.count();
+    return ok({ scope: "studio", companies });
+  }
+  const company = await prisma.company.findUnique({
+    where: { id: actor.scope.companyId },
+    select: { id: true, name: true, cuit: true },
   });
+  return ok({ scope: "company", company });
 });

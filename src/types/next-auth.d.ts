@@ -4,14 +4,18 @@ import type { DefaultSession } from "next-auth";
 declare module "next-auth" {
   interface User {
     role: Role;
-    clientId?: string | null;
+    companyId?: string | null;
+    employeeId?: string | null;
+    mustChangePassword?: boolean;
   }
 
   interface Session {
     user: {
       id: string;
       role: Role;
-      clientId?: string | null;
+      companyId: string | null;
+      employeeId: string | null;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -20,6 +24,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
-    clientId?: string | null;
+    companyId: string | null;
+    employeeId: string | null;
+    mustChangePassword: boolean;
   }
 }

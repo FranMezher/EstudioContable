@@ -1,57 +1,58 @@
-import { put, del } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 
-/**
- * Sube un archivo a Vercel Blob y devuelve la URL pública.
- * El path se prefija para mantener orden por sección/cliente.
- */
-export async function uploadFile(
-  file: File,
-  opts: { folder: string; clientId: string }
-): Promise<{ url: string; fileName: string }> {
+function requireToken() {
   if (!token) {
     throw new Error(
       "BLOB_READ_WRITE_TOKEN no configurado. Conectá Vercel Blob para poder subir archivos."
     );
   }
+  return token;
+}
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const pathname = `${opts.folder}/${opts.clientId}/${Date.now()}-${safeName}`;
+/**
+ * Los recibos se guardan en Blob PRIVADO. Nunca se expone la URL del blob:
+ * el único camino para leer un recibo es /api/files/payslip/[id], que valida
+ * sesión y alcance en cada pedido. Por eso se guarda el pathname, no una URL.
+ */
+export function payslipPath(args: {
+  companyId: string;
+  employeeId: string;
+  periodYear: number;
+  periodMonth: number;
+  fileName: string;
+}): string {
+  const mes = String(args.periodMonth).padStart(2, "0");
+  const ext = args.fileName.split(".").pop()?.toLowerCase() ?? "pdf";
+  return `payslips/${args.companyId}/${args.employeeId}/${args.periodYear}-${mes}.${ext}`;
+}
 
-  const blob = await put(pathname, file, {
-    access: "public",
-    token,
+/** Sube un recibo y devuelve su pathname (no una URL pública). */
+export async function uploadPayslipFile(
+  data: Buffer | File,
+  pathname: string
+): Promise<{ path: string; size: number }> {
+  const blob = await put(pathname, data, {
+    access: "private",
+    token: requireToken(),
     addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/pdf",
   });
-
-  return { url: blob.url, fileName: file.name };
+  const size = data instanceof File ? data.size : data.byteLength;
+  return { path: blob.pathname, size };
 }
 
-/**
- * Sube contenido binario (Buffer) a Vercel Blob. Útil para la API,
- * que recibe archivos en base64 en vez de multipart.
- */
-export async function uploadBuffer(
-  data: Buffer,
-  fileName: string,
-  opts: { folder: string; clientId: string }
-): Promise<{ url: string; fileName: string }> {
-  if (!token) {
-    throw new Error(
-      "BLOB_READ_WRITE_TOKEN no configurado. Conectá Vercel Blob para poder subir archivos."
-    );
-  }
-  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const pathname = `${opts.folder}/${opts.clientId}/${Date.now()}-${safeName}`;
-  const blob = await put(pathname, data, { access: "public", token, addRandomSuffix: false });
-  return { url: blob.url, fileName };
+/** Abre un archivo privado para servirlo desde una ruta autenticada. */
+export async function readPrivateFile(pathname: string) {
+  return get(pathname, { access: "private", token: requireToken() });
 }
 
-export async function deleteFile(url: string) {
+export async function deleteFile(pathname: string) {
   if (!token) return;
   try {
-    await del(url, { token });
+    await del(pathname, { token });
   } catch (e) {
     console.error("[blob] No se pudo borrar el archivo:", e);
   }

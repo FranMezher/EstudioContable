@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { uploadBuffer } from "@/lib/blob";
-import { ServiceError, type Actor } from "@/server/services";
+import { ServiceError, scopeFor } from "@/server/scope";
+import type { Actor } from "@/server/services";
 
 const KEY_PREFIX = "mp_live_";
 
@@ -10,38 +10,38 @@ const KEY_PREFIX = "mp_live_";
 export function generateApiKey() {
   const secret = crypto.randomBytes(24).toString("hex");
   const fullKey = `${KEY_PREFIX}${secret}`;
-  return {
-    fullKey,
-    prefix: fullKey.slice(0, 14),
-    keyHash: hashKey(fullKey),
-  };
+  return { fullKey, prefix: fullKey.slice(0, 14), keyHash: hashKey(fullKey) };
 }
 
 export function hashKey(key: string) {
   return crypto.createHash("sha256").update(key).digest("hex");
 }
 
-/** Valida el header Authorization: Bearer <key> y devuelve el Actor. */
+/**
+ * Valida `Authorization: Bearer <key>` y devuelve el Actor.
+ * Una key sin empresa tiene alcance de estudio; una key con empresa queda
+ * limitada a esa empresa, con el mismo filtro que usa la web.
+ */
 export async function authenticateRequest(req: Request): Promise<Actor> {
   const header = req.headers.get("authorization") ?? "";
   if (!header.startsWith("Bearer ")) {
     throw new ServiceError("Falta el header Authorization: Bearer <api_key>", 401);
   }
+
   const key = header.slice(7).trim();
   const record = await prisma.apiKey.findUnique({ where: { keyHash: hashKey(key) } });
   if (!record || !record.isActive) {
     throw new ServiceError("API key inválida o desactivada", 401);
   }
 
-  await prisma.apiKey.update({
-    where: { id: record.id },
-    data: { lastUsedAt: new Date() },
-  });
+  await prisma.apiKey.update({ where: { id: record.id }, data: { lastUsedAt: new Date() } });
 
   return {
     userId: record.createdById,
-    role: record.clientId ? "CLIENT" : "ADMIN",
-    clientId: record.clientId,
+    scope: scopeFor({
+      role: record.companyId ? "COMPANY_ADMIN" : "STUDIO_ADMIN",
+      companyId: record.companyId,
+    }),
   };
 }
 
@@ -53,11 +53,13 @@ export function fail(message: string, status = 400) {
   return NextResponse.json({ error: { message } }, { status });
 }
 
-/**
- * Envuelve un handler de API: autentica, ejecuta y normaliza errores a JSON.
- */
+/** Envuelve un handler de API: autentica, ejecuta y normaliza errores a JSON. */
 export function withApi(
-  handler: (ctx: { req: Request; actor: Actor; params: Record<string, string> }) => Promise<NextResponse>
+  handler: (ctx: {
+    req: Request;
+    actor: Actor;
+    params: Record<string, string>;
+  }) => Promise<NextResponse>
 ) {
   return async (
     req: Request,
@@ -84,26 +86,12 @@ export async function readJson<T = Record<string, unknown>>(req: Request): Promi
   }
 }
 
-/**
- * Resuelve un archivo recibido por API. Acepta:
- *  - { fileUrl }            → se usa la URL tal cual (ya hosteada)
- *  - { fileBase64, fileName } → se sube a Vercel Blob
- */
-export async function resolveApiFile(
-  input: { fileUrl?: string | null; fileBase64?: string | null; fileName?: string | null },
-  opts: { folder: string; clientId: string; required?: boolean }
-): Promise<{ url: string; fileName: string } | null> {
-  if (input.fileUrl) {
-    return { url: input.fileUrl, fileName: input.fileName ?? input.fileUrl.split("/").pop() ?? "archivo" };
-  }
-  if (input.fileBase64) {
-    if (!input.fileName) throw new ServiceError("Falta fileName para el archivo en base64", 400);
-    const base64 = input.fileBase64.includes(",")
-      ? input.fileBase64.slice(input.fileBase64.indexOf(",") + 1)
-      : input.fileBase64;
-    const buffer = Buffer.from(base64, "base64");
-    return uploadBuffer(buffer, input.fileName, { folder: opts.folder, clientId: opts.clientId });
-  }
-  if (opts.required) throw new ServiceError("Tenés que enviar fileUrl o fileBase64+fileName", 400);
-  return null;
+/** Decodifica un archivo enviado en base64. */
+export function decodeBase64File(input: string): Buffer {
+  const base64 = input.includes(",") ? input.slice(input.indexOf(",") + 1) : input;
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.byteLength === 0) throw new ServiceError("El archivo llegó vacío", 400);
+  if (buffer.byteLength > 10 * 1024 * 1024)
+    throw new ServiceError("El archivo supera los 10 MB", 400);
+  return buffer;
 }

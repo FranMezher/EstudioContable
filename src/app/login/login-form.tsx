@@ -23,21 +23,26 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       {state.error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           {state.error}
         </div>
       )}
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="identifier">Email o CUIL</Label>
         <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="tucorreo@ejemplo.com"
+          id="identifier"
+          name="identifier"
+          type="text"
+          inputMode="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          placeholder="tucorreo@ejemplo.com o 20-12345678-9"
           required
         />
+        <p className="mt-1.5 text-xs text-slate-500">
+          Si sos empleado, ingresá con tu CUIL (con o sin guiones).
+        </p>
       </div>
       <div>
         <Label htmlFor="password">Contraseña</Label>

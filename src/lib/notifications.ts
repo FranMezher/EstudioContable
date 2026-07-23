@@ -24,9 +24,10 @@ export async function notifyUsers(
   });
 }
 
-export async function getAdminUserIds(): Promise<string[]> {
+/** Ids de los usuarios del estudio, para avisos internos. */
+export async function getStudioUserIds(): Promise<string[]> {
   const admins = await prisma.user.findMany({
-    where: { role: "ADMIN", isActive: true },
+    where: { role: "STUDIO_ADMIN", isActive: true },
     select: { id: true },
   });
   return admins.map((a) => a.id);

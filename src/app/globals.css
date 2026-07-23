@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Azul institucional Mezher Pampin */
   --color-brand-50: #eef4fb;
   --color-brand-100: #d8e6f5;
   --color-brand-200: #b3cdea;
@@ -11,6 +12,16 @@
   --color-brand-700: #1e3a5f;
   --color-brand-800: #1a3252;
   --color-brand-900: #182a44;
+
+  /* Acento cálido: acciones principales y novedades sin recargar el azul */
+  --color-accent-50: #fdf6ec;
+  --color-accent-100: #f8e7cb;
+  --color-accent-200: #f0cd97;
+  --color-accent-300: #e5ae63;
+  --color-accent-400: #d9913c;
+  --color-accent-500: #c4762a;
+  --color-accent-600: #a35c22;
+  --color-accent-700: #7f451f;
 
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
@@ -25,6 +36,14 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Objetivos táctiles cómodos en el portal del empleado, que se usa del celular */
+@media (pointer: coarse) {
+  button,
+  a[role="button"] {
+    min-height: 44px;
+  }
 }
 
 ::-webkit-scrollbar {

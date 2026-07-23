@@ -1,4 +1,4 @@
-// Estudio Mezher Pampin - Gestión de clientes
+// Estudio Mezher Pampin - Recibos de Sueldo
 // Modelo de datos
 
 generator client {
@@ -10,184 +10,230 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Los tres niveles de acceso. El alcance de cada consulta se deriva de acá
+/// (ver src/server/scope.ts): estudio ve todo, empresa ve la suya, empleado
+/// ve únicamente sus propios recibos.
 enum Role {
-  ADMIN
-  CLIENT
+  STUDIO_ADMIN
+  COMPANY_ADMIN
+  EMPLOYEE
 }
 
-enum DeclarationType {
-  IVA
-  IIBB
-  GANANCIAS
-  BALANCES
-}
-
-enum UploaderRole {
-  ADMIN
-  CLIENT
-}
-
-enum InquiryStatus {
-  OPEN
-  ANSWERED
-  CLOSED
+/// De dónde salió un recibo.
+enum PayslipSource {
+  MANUAL // cargado a mano desde el panel
+  IMPORT // tomado de la carpeta mensual por el importador
+  API // subido por una integración vía /api/v1
 }
 
 enum NotificationType {
-  DECLARATION
-  UNION
   PAYSLIP
-  INQUIRY
+  IMPORT
   GENERAL
 }
 
-// Usuarios del sistema (admin del estudio o cliente)
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         Role     @default(CLIENT)
-  // Si es CLIENT, apunta a la empresa/cliente que representa
-  clientId     String?
-  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  notifications Notification[]
-
-  @@index([clientId])
+/// Resultado de procesar un archivo durante una importación.
+enum ImportItemStatus {
+  OK
+  DUPLICADO
+  SIN_EMPLEADO
+  SIN_EMPRESA
+  SIN_PERIODO
+  ERROR
 }
 
-// Cliente del estudio (empresa o persona)
-model Client {
+// ---------------------------------------------------------------------------
+// EMPRESAS Y PERSONAS
+// ---------------------------------------------------------------------------
+
+/// Empresa cliente del estudio.
+model Company {
   id        String   @id @default(cuid())
-  name      String // Razón social / nombre
-  cuit      String?
+  name      String
+  cuit      String?  @unique
   email     String?
   phone     String?
   notes     String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users        User[]
-  declarations Declaration[]
-  unionItems   UnionItem[]
-  employees    Employee[]
-  inquiries    Inquiry[]
-  apiKeys      ApiKey[]
+  users      User[]
+  employees  Employee[]
+  apiKeys    ApiKey[]
+  importRuns ImportRun[]
+
+  @@index([name])
 }
 
-// API keys para integraciones / carga masiva vía API REST
+/// Empleado de una empresa. El CUIL es la clave con la que el importador
+/// asigna cada archivo, por eso es obligatorio y único dentro de la empresa.
+model Employee {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  cuil      String // solo dígitos, normalizado
+  position  String?
+  isActive  Boolean  @default(true)
+  /// Creado automáticamente por el importador: el estudio lo tiene que revisar.
+  autoCreated Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payslips    Payslip[]
+  user        User?
+  importItems ImportItem[]
+
+  @@unique([companyId, cuil])
+  @@index([companyId, name])
+}
+
+/// Usuario del sistema. Los admins entran con email; los empleados con CUIL.
+model User {
+  id           String  @id @default(cuid())
+  email        String? @unique // admins del estudio y de empresa
+  cuil         String? @unique // empleados (solo dígitos)
+  passwordHash String
+  name         String
+  role         Role
+
+  /// Requerido salvo para STUDIO_ADMIN.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Requerido si role = EMPLOYEE. Único: un usuario ↔ un empleado, sin
+  /// ambigüedad posible sobre cuáles son "sus" recibos.
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  mustChangePassword Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  notifications Notification[]
+
+  @@index([companyId])
+}
+
+// ---------------------------------------------------------------------------
+// RECIBOS
+// ---------------------------------------------------------------------------
+
+/// Recibo de sueldo de un empleado para un período.
+model Payslip {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodMonth Int // 1-12
+  periodYear  Int
+
+  /// Pathname del archivo en Vercel Blob PRIVADO. No es una URL pública:
+  /// solo se puede leer a través de /api/files/payslip/[id], que valida sesión.
+  filePath String
+  fileName String
+  fileSize Int?
+
+  netAmount Decimal? @db.Decimal(14, 2)
+
+  /// SHA-256 del archivo original. Le da idempotencia al importador.
+  sourceHash String?
+  source     PayslipSource @default(MANUAL)
+
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  importItems ImportItem[]
+
+  @@unique([employeeId, periodYear, periodMonth])
+  @@index([employeeId, periodYear, periodMonth])
+  @@index([sourceHash])
+}
+
+// ---------------------------------------------------------------------------
+// IMPORTACIONES
+// ---------------------------------------------------------------------------
+
+/// Una corrida del importador sobre la carpeta mensual.
+model ImportRun {
+  id        String   @id @default(cuid())
+  /// Null si la corrida abarcó varias empresas.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  sourceLabel String // ruta o etiqueta de la carpeta procesada
+  isDryRun    Boolean @default(false)
+
+  totalFiles   Int @default(0)
+  createdCount Int @default(0)
+  skippedCount Int @default(0)
+  errorCount   Int @default(0)
+
+  startedById String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  items ImportItem[]
+
+  @@index([startedAt])
+}
+
+/// Un archivo dentro de una corrida, con qué se hizo con él y por qué.
+model ImportItem {
+  id    String    @id @default(cuid())
+  runId String
+  run   ImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  fileName String
+  status   ImportItemStatus
+  /// Motivo legible cuando no se pudo asignar.
+  message  String?
+
+  /// Lo que se pudo extraer del archivo, aunque no haya alcanzado para asignarlo.
+  detectedCuil    String?
+  detectedCompany String?
+  periodMonth     Int?
+  periodYear      Int?
+
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  payslipId  String?
+  payslip    Payslip?  @relation(fields: [payslipId], references: [id], onDelete: SetNull)
+
+  /// Queda pendiente hasta que un admin lo resuelve o lo descarta.
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([runId, status])
+  @@index([status, resolvedAt])
+}
+
+// ---------------------------------------------------------------------------
+// SOPORTE
+// ---------------------------------------------------------------------------
+
+/// API keys para el importador y otras integraciones.
 model ApiKey {
-  id          String    @id @default(cuid())
-  name        String // Etiqueta descriptiva (ej: "Script AFIP")
-  prefix      String // Primeros caracteres visibles para identificarla
-  keyHash     String    @unique // hash SHA-256 de la clave completa
-  // null = acceso total (admin); con valor = limitada a ese cliente
-  clientId    String?
-  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  name    String
+  prefix  String
+  keyHash String @unique
+
+  /// null = acceso total (estudio); con valor = limitada a esa empresa.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   createdById String
   isActive    Boolean   @default(true)
   lastUsedAt  DateTime?
   createdAt   DateTime  @default(now())
 
-  @@index([clientId])
+  @@index([companyId])
 }
 
-// Declaraciones juradas: IVA, IIBB, Ganancias, Balances
-model Declaration {
-  id           String          @id @default(cuid())
-  clientId     String
-  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  type         DeclarationType
-  periodMonth  Int? // 1-12, opcional (ej: balances anuales)
-  periodYear   Int
-  fileUrl      String
-  fileName     String
-  notes        String?
-  uploadedById String
-  uploadedRole UploaderRole
-  createdAt    DateTime        @default(now())
-
-  @@index([clientId, type])
-  @@index([clientId, periodYear, periodMonth])
-}
-
-// Sindicatos: el estudio/cliente carga, el cliente marca OK al pagar
-model UnionItem {
-  id          String       @id @default(cuid())
-  clientId    String
-  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title       String // Ej: "Sindicato Comercio - Aporte"
-  description String?
-  periodMonth Int?
-  periodYear  Int
-  amount      Decimal?     @db.Decimal(14, 2)
-  fileUrl     String?
-  fileName    String?
-  isPaid      Boolean      @default(false)
-  paidAt      DateTime?
-  paidById    String?
-  createdById String
-  createdRole UploaderRole
-  createdAt   DateTime     @default(now())
-
-  @@index([clientId, periodYear, periodMonth])
-  @@index([clientId, isPaid])
-}
-
-// Empleados de un cliente (para los recibos de sueldo)
-model Employee {
-  id        String   @id @default(cuid())
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  name      String
-  cuil      String?
-  position  String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  payslips Payslip[]
-
-  @@index([clientId])
-}
-
-// Recibos de sueldo por empleado y período
-model Payslip {
-  id           String       @id @default(cuid())
-  employeeId   String
-  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  periodMonth  Int
-  periodYear   Int
-  fileUrl      String
-  fileName     String
-  netAmount    Decimal?     @db.Decimal(14, 2)
-  uploadedById String
-  uploadedRole UploaderRole
-  createdAt    DateTime     @default(now())
-
-  @@index([employeeId, periodYear, periodMonth])
-}
-
-// Consultas de los clientes (llegan por mail + quedan registradas)
-model Inquiry {
-  id          String        @id @default(cuid())
-  clientId    String
-  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  subject     String
-  message     String
-  status      InquiryStatus @default(OPEN)
-  createdById String
-  response    String?
-  respondedAt DateTime?
-  createdAt   DateTime      @default(now())
-
-  @@index([clientId, status])
-}
-
-// Notificaciones in-app
+/// Notificaciones in-app.
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -202,7 +248,7 @@ model Notification {
   @@index([userId, isRead])
 }
 
-// Configuración global (ej: mail destino de consultas)
+/// Configuración global.
 model Setting {
   key       String   @id
   value     String

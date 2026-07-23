@@ -1,223 +1,230 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { uploadFile } from "@/lib/blob";
-import { getActor, getSessionActor } from "@/server/access";
+import { getSessionScope } from "@/server/access";
+import { ServiceError } from "@/server/scope";
 import {
-  svcCreateDeclaration,
-  svcDeleteDeclaration,
-  svcCreateUnionItem,
-  svcSetUnionPaid,
-  svcDeleteUnionItem,
+  svcCreateCompany,
   svcCreateEmployee,
   svcCreatePayslip,
+  svcCreateUser,
   svcDeletePayslip,
-  svcCreateInquiry,
-  svcRespondInquiry,
+  svcResetPassword,
+  svcSetUserActive,
+  svcUpdateCompany,
+  svcUpdateEmployee,
+  svcChangeOwnPassword,
 } from "@/server/services";
-import type { DeclarationType } from "@/generated/prisma/enums";
+import type { Role } from "@/generated/prisma/enums";
 
-export type ActionState = { ok?: boolean; error?: string };
+export type ActionState = {
+  ok?: boolean;
+  error?: string;
+  /** Contraseña provisoria, para mostrarla una sola vez. */
+  password?: string;
+};
 
 function revalidateAll() {
-  revalidatePath("/admin", "layout");
-  revalidatePath("/portal", "layout");
+  revalidatePath("/estudio", "layout");
+  revalidatePath("/empresa", "layout");
+  revalidatePath("/mis-recibos", "layout");
 }
 
-function num(value: FormDataEntryValue | null): number | null {
-  if (value === null || value === "") return null;
-  const n = Number(value);
+function str(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function num(formData: FormData, key: string): number | null {
+  const v = str(formData, key);
+  if (!v) return null;
+  const n = Number(v);
   return Number.isNaN(n) ? null : n;
 }
 
-function getFile(formData: FormData, required: boolean): File | null {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    if (required) throw new Error("Tenés que adjuntar un archivo");
-    return null;
-  }
-  return file;
-}
-
 function fail(e: unknown, fallback: string): ActionState {
-  return { error: e instanceof Error ? e.message : fallback };
+  if (e instanceof ServiceError) return { error: e.message };
+  if (e instanceof Error) return { error: e.message };
+  return { error: fallback };
 }
 
 // ---------------------------------------------------------------------------
-// DECLARACIONES
+// EMPRESAS
 // ---------------------------------------------------------------------------
-export async function uploadDeclaration(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+
+export async function createCompany(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const actor = await getSessionActor();
-    const clientId = (formData.get("clientId") as string) || actor.clientId;
-    const file = getFile(formData, true)!;
-    const { url, fileName } = await uploadFile(file, {
-      folder: "declaraciones",
-      clientId: clientId!,
+    const actor = await getSessionScope();
+    await svcCreateCompany(actor, {
+      name: str(formData, "name"),
+      cuit: str(formData, "cuit") || null,
+      email: str(formData, "email") || null,
+      phone: str(formData, "phone") || null,
     });
-
-    await svcCreateDeclaration(actor, {
-      clientId,
-      type: formData.get("type") as DeclarationType,
-      periodYear: num(formData.get("periodYear"))!,
-      periodMonth: num(formData.get("periodMonth")),
-      fileUrl: url,
-      fileName,
-      notes: (formData.get("notes") as string) || null,
-    });
-
     revalidateAll();
     return { ok: true };
   } catch (e) {
-    return fail(e, "Error al subir la declaración");
+    return fail(e, "No se pudo crear la empresa");
   }
 }
 
-export async function deleteDeclaration(id: string) {
-  await svcDeleteDeclaration(await getSessionActor(), id);
-  revalidateAll();
+export async function updateCompany(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const actor = await getSessionScope();
+    await svcUpdateCompany(actor, str(formData, "companyId"), {
+      name: str(formData, "name"),
+      email: str(formData, "email") || null,
+      phone: str(formData, "phone") || null,
+      notes: str(formData, "notes") || null,
+    });
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo actualizar la empresa");
+  }
 }
 
 // ---------------------------------------------------------------------------
-// SINDICATOS
+// EMPLEADOS
 // ---------------------------------------------------------------------------
-export async function createUnionItem(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  try {
-    const actor = await getSessionActor();
-    const clientId = (formData.get("clientId") as string) || actor.clientId;
 
-    let fileUrl: string | null = null;
-    let fileName: string | null = null;
-    const file = getFile(formData, false);
-    if (file) {
-      const up = await uploadFile(file, { folder: "sindicatos", clientId: clientId! });
-      fileUrl = up.url;
-      fileName = up.fileName;
+export async function createEmployee(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const actor = await getSessionScope();
+    await svcCreateEmployee(actor, {
+      // El companyId del formulario se valida contra el alcance; si el usuario
+      // es admin de empresa, el suyo gana y un id ajeno da 404.
+      companyId: str(formData, "companyId") || null,
+      name: str(formData, "name"),
+      cuil: str(formData, "cuil"),
+      position: str(formData, "position") || null,
+    });
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo crear el empleado");
+  }
+}
+
+export async function updateEmployee(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const actor = await getSessionScope();
+    await svcUpdateEmployee(actor, str(formData, "employeeId"), {
+      name: str(formData, "name"),
+      position: str(formData, "position") || null,
+    });
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo actualizar el empleado");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RECIBOS
+// ---------------------------------------------------------------------------
+
+export async function uploadPayslip(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const actor = await getSessionScope();
+
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Tenés que adjuntar el archivo del recibo" };
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return { error: "El archivo no puede superar los 10 MB" };
     }
 
-    await svcCreateUnionItem(actor, {
-      clientId,
-      title: (formData.get("title") as string) ?? "",
-      description: (formData.get("description") as string) || null,
-      periodYear: num(formData.get("periodYear"))!,
-      periodMonth: num(formData.get("periodMonth")),
-      amount: num(formData.get("amount")),
-      fileUrl,
-      fileName,
-    });
-
-    revalidateAll();
-    return { ok: true };
-  } catch (e) {
-    return fail(e, "Error al cargar el sindicato");
-  }
-}
-
-export async function toggleUnionPaid(id: string, paid: boolean) {
-  await svcSetUnionPaid(await getSessionActor(), id, paid);
-  revalidateAll();
-}
-
-export async function deleteUnionItem(id: string) {
-  await svcDeleteUnionItem(await getSessionActor(), id);
-  revalidateAll();
-}
-
-// ---------------------------------------------------------------------------
-// EMPLEADOS Y RECIBOS
-// ---------------------------------------------------------------------------
-export async function createEmployee(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  try {
-    const actor = await getSessionActor();
-    await svcCreateEmployee(actor, {
-      clientId: (formData.get("clientId") as string) || actor.clientId,
-      name: (formData.get("name") as string) ?? "",
-      cuil: (formData.get("cuil") as string) || null,
-      position: (formData.get("position") as string) || null,
-    });
-    revalidateAll();
-    return { ok: true };
-  } catch (e) {
-    return fail(e, "Error al crear el empleado");
-  }
-}
-
-export async function uploadPayslip(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  try {
-    const actor = await getSessionActor();
-    const employeeId = formData.get("employeeId") as string;
-    const clientId = (formData.get("clientId") as string) || actor.clientId || "tmp";
-    const file = getFile(formData, true)!;
-    const { url, fileName } = await uploadFile(file, { folder: "recibos", clientId });
+    const periodMonth = num(formData, "periodMonth");
+    const periodYear = num(formData, "periodYear");
+    if (!periodMonth || !periodYear) {
+      return { error: "Indicá mes y año del recibo" };
+    }
 
     await svcCreatePayslip(actor, {
-      employeeId,
-      periodYear: num(formData.get("periodYear"))!,
-      periodMonth: num(formData.get("periodMonth"))!,
-      fileUrl: url,
-      fileName,
-      netAmount: num(formData.get("netAmount")),
+      employeeId: str(formData, "employeeId"),
+      periodMonth,
+      periodYear,
+      file,
+      fileName: file.name,
+      netAmount: num(formData, "netAmount"),
+      source: "MANUAL",
     });
 
     revalidateAll();
     return { ok: true };
   } catch (e) {
-    return fail(e, "Error al subir el recibo");
+    return fail(e, "No se pudo subir el recibo");
   }
 }
 
-export async function deletePayslip(id: string) {
-  await svcDeletePayslip(await getSessionActor(), id);
-  revalidateAll();
+export async function deletePayslip(payslipId: string): Promise<ActionState> {
+  try {
+    await svcDeletePayslip(await getSessionScope(), payslipId);
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo eliminar el recibo");
+  }
 }
 
 // ---------------------------------------------------------------------------
-// CONSULTAS
+// ACCESOS
 // ---------------------------------------------------------------------------
-export async function createInquiry(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+
+export async function createUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const actor = await getSessionActor();
-    if (actor.role !== "CLIENT") throw new Error("Solo los clientes pueden enviar consultas");
-    await svcCreateInquiry(actor, {
-      subject: (formData.get("subject") as string) ?? "",
-      message: (formData.get("message") as string) ?? "",
+    const actor = await getSessionScope();
+    const { password } = await svcCreateUser(actor, {
+      role: str(formData, "role") as Role,
+      name: str(formData, "name"),
+      email: str(formData, "email") || null,
+      companyId: str(formData, "companyId") || null,
+      employeeId: str(formData, "employeeId") || null,
     });
     revalidateAll();
-    return { ok: true };
+    return { ok: true, password };
   } catch (e) {
-    return fail(e, "Error al enviar la consulta");
+    return fail(e, "No se pudo crear el acceso");
   }
 }
 
-export async function respondInquiry(
+export async function resetUserPassword(userId: string): Promise<ActionState> {
+  try {
+    const password = await svcResetPassword(await getSessionScope(), userId);
+    revalidateAll();
+    return { ok: true, password };
+  } catch (e) {
+    return fail(e, "No se pudo restablecer la contraseña");
+  }
+}
+
+export async function setUserActive(userId: string, isActive: boolean): Promise<ActionState> {
+  try {
+    await svcSetUserActive(await getSessionScope(), userId, isActive);
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo actualizar el acceso");
+  }
+}
+
+/** Cambio de contraseña propio: disponible para todos los roles. */
+export async function changeOwnPassword(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   try {
-    const actor = await getActor();
-    await svcRespondInquiry(
-      { userId: actor.id, role: actor.role, clientId: actor.clientId ?? null },
-      formData.get("id") as string,
-      (formData.get("response") as string) ?? ""
-    );
+    const { userId } = await getSessionScope();
+    const nueva = str(formData, "newPassword");
+    if (nueva !== str(formData, "confirmPassword")) {
+      return { error: "Las contraseñas nuevas no coinciden" };
+    }
+    await svcChangeOwnPassword(userId, str(formData, "currentPassword"), nueva);
     revalidateAll();
     return { ok: true };
   } catch (e) {
-    return fail(e, "Error al responder");
+    return fail(e, "No se pudo cambiar la contraseña");
   }
 }

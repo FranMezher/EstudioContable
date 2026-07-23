@@ -1,14 +1,16 @@
 import { auth } from "@/auth";
-import type { Actor } from "@/server/services";
+import { scopeFor, ServiceError, type Scope } from "@/server/scope";
 
-export async function getActor() {
+/**
+ * Alcance del usuario logueado, para usar en server actions.
+ * A diferencia de `requireSession()` (que redirige), acá se tira un error:
+ * las acciones lo devuelven al formulario en vez de navegar.
+ */
+export async function getSessionScope(): Promise<{ userId: string; scope: Scope }> {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
-  return session.user;
-}
-
-/** Construye un Actor (identidad uniforme) a partir de la sesión web. */
-export async function getSessionActor(): Promise<Actor> {
-  const user = await getActor();
-  return { userId: user.id, role: user.role, clientId: user.clientId ?? null };
+  if (!session?.user) throw new ServiceError("No autenticado", 401);
+  return {
+    userId: session.user.id,
+    scope: scopeFor(session.user),
+  };
 }

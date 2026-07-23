@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "import:recibos": "tsx scripts/import-payslips.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -26,7 +27,6 @@
     "pg": "^8.21.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "resend": "^6.13.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
@@ -43,6 +43,7 @@
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "unpdf": "^1.6.2"
   }
 }

@@ -1,9 +1,10 @@
-import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { homeFor } from "@/server/scope";
 
 export default async function Home() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role === "ADMIN") redirect("/admin");
-  redirect("/portal");
+  if (session.user.mustChangePassword) redirect("/cambiar-clave");
+  redirect(homeFor(session.user.role));
 }

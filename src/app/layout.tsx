@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
+import { BRAND } from "@/lib/constants";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -8,8 +10,9 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Estudio Mezher Pampin",
-  description: "Sistema de gestión de clientes del Estudio Mezher Pampin",
+  title: `${BRAND.name} · ${BRAND.tagline}`,
+  description: `Portal de recibos de sueldo del Estudio ${BRAND.name}.`,
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -19,7 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {/* Necesario para que la pantalla de cambio de clave pueda refrescar
+            el token con update() sin obligar a volver a loguearse. */}
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }
