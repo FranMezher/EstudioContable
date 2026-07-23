@@ -9,17 +9,16 @@ import { BRAND } from "@/lib/constants";
 import { doLogout } from "@/lib/auth-actions";
 import { BrandMark } from "@/components/brand";
 import { NotificationBell, type NotificationItem } from "./notification-bell";
-import type { NavItem } from "./nav";
+import { navFor, subtitleFor } from "./nav";
+import type { Role } from "@/generated/prisma/enums";
 
 export function AppShell({
-  nav,
-  subtitle,
+  role,
   user,
   notifications,
   children,
 }: {
-  nav: NavItem[];
-  subtitle: string;
+  role: Role;
   user: { name: string; detail: string };
   notifications: NotificationItem[];
   children: React.ReactNode;
@@ -27,6 +26,12 @@ export function AppShell({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // La navegación se arma acá adentro: los iconos de Lucide son componentes y
+  // no se pueden pasar como props desde un Server Component (se romperían al
+  // serializar la frontera servidor→cliente).
+  const nav = navFor(role);
+  const subtitle = subtitleFor(role);
 
   // Con un solo destino la barra lateral sobra: el empleado ve solo la cabecera.
   const showSidebar = nav.length > 1;
