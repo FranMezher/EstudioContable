@@ -220,6 +220,8 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
       email: str(formData, "email") || null,
       companyId: str(formData, "companyId") || null,
       employeeId: str(formData, "employeeId") || null,
+      // Vacío = se genera una provisoria. Si el admin escribe una, se usa esa.
+      password: str(formData, "password") || null,
     });
     revalidateAll();
     return { ok: true, password };

@@ -143,6 +143,17 @@ export function UsersManager({
               <Label htmlFor="user-email">Email</Label>
               <Input id="user-email" name="email" type="email" required />
             </div>
+            <div>
+              <Label htmlFor="user-password">Contraseña (opcional)</Label>
+              <Input
+                id="user-password"
+                name="password"
+                type="text"
+                autoComplete="off"
+                placeholder="Vacío = se genera una"
+                minLength={6}
+              />
+            </div>
           </div>
           <SubmitBtn />
         </form>

@@ -387,7 +387,10 @@ export async function svcCreateUser(actor: Actor, input: NewUserInput) {
   const name = input.name?.trim();
   if (!name) throw new ServiceError("Indicá el nombre");
 
-  const password = input.password?.trim() || generateProvisionalPassword();
+  const chosen = input.password?.trim();
+  if (chosen && chosen.length < 6)
+    throw new ServiceError("La contraseña tiene que tener al menos 6 caracteres");
+  const password = chosen || generateProvisionalPassword();
   const passwordHash = await bcrypt.hash(password, 10);
 
   let email: string | null = null;
