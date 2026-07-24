@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { deleteFile } from "../src/lib/blob";
+import { checkBlobAccess, deleteFile } from "../src/lib/blob";
 
 /**
  * ---------------------------------------------------------------------------
@@ -26,6 +26,8 @@ const prisma = new PrismaClient({
 });
 
 const confirmar = process.argv.includes("--confirmar");
+/** Limpia la base aunque no se puedan borrar los archivos (quedan huérfanos). */
+const sinArchivos = process.argv.includes("--sin-archivos");
 
 async function main() {
   const [companies, employees, payslips, users, runs, studioAdmins, studioKeys] = await Promise.all([
@@ -67,16 +69,40 @@ async function main() {
     );
   }
 
-  // 1) Los archivos primero: una vez borrada la fila, se pierde el path.
-  console.log("Borrando archivos del almacenamiento…");
+  // 1) Los archivos primero: una vez borrada la fila se pierde el path, y el
+  //    archivo queda huérfano para siempre. Por eso, si el almacenamiento no
+  //    responde, se corta ACÁ sin tocar la base.
   const slips = await prisma.payslip.findMany({ select: { filePath: true } });
-  let borrados = 0;
-  for (const s of slips) {
-    await deleteFile(s.filePath);
-    borrados++;
-    if (borrados % 25 === 0) console.log(`  ${borrados}/${slips.length}`);
+
+  if (slips.length > 0 && sinArchivos) {
+    console.log("⚠️  --sin-archivos: no se tocan los PDF. Van a quedar huérfanos en el almacenamiento.");
+  } else if (slips.length > 0) {
+    const acceso = await checkBlobAccess();
+    if (!acceso.ok) {
+      throw new Error(
+        `No puedo acceder al almacenamiento de archivos: ${acceso.error}\n` +
+          "   No borré nada, para no dejar los PDF huérfanos.\n\n" +
+          "   Revisá BLOB_READ_WRITE_TOKEN en el .env (¿quedó el valor de ejemplo?).\n" +
+          "   El token real está en Vercel → Storage → tu Blob store.\n\n" +
+          "   Si preferís limpiar igual y borrar los archivos a mano desde Vercel:\n" +
+          "     npx tsx scripts/limpiar-datos.ts --confirmar --sin-archivos"
+      );
+    }
+
+    console.log("Borrando archivos del almacenamiento…");
+    let borrados = 0;
+    let fallados = 0;
+    for (const s of slips) {
+      if (await deleteFile(s.filePath)) borrados++;
+      else fallados++;
+      const hechos = borrados + fallados;
+      if (hechos % 25 === 0) console.log(`  ${hechos}/${slips.length}`);
+    }
+    console.log(`  ${borrados} archivo(s) borrados${fallados ? `, ${fallados} con error` : ""}.`);
+    if (fallados > 0) {
+      console.log("  ⚠️  Los que fallaron quedan huérfanos: borralos desde Vercel → Storage.");
+    }
   }
-  console.log(`  ${borrados} archivo(s) borrados.`);
 
   // 2) Las filas, de la más dependiente a la más general.
   console.log("Borrando datos…");

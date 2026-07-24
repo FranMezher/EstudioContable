@@ -14,6 +14,8 @@
     "db:studio": "prisma studio",
     "db:limpiar": "tsx scripts/limpiar-datos.ts",
     "db:limpiar:confirmar": "tsx scripts/limpiar-datos.ts --confirmar",
+    "blob:huerfanos": "tsx scripts/limpiar-huerfanos.ts",
+    "blob:huerfanos:confirmar": "tsx scripts/limpiar-huerfanos.ts --confirmar",
     "import:recibos": "tsx scripts/import-payslips.ts",
     "import:recibos:confirmar": "tsx scripts/import-payslips.ts --confirmar",
     "postinstall": "prisma generate"

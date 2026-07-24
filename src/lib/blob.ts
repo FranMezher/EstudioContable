@@ -1,4 +1,4 @@
-import { put, del, get } from "@vercel/blob";
+import { put, del, get, list } from "@vercel/blob";
 
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 
@@ -52,11 +52,36 @@ export async function readPrivateFile(pathname: string) {
   return get(pathname, { access: "private", token: requireToken() });
 }
 
-export async function deleteFile(pathname: string) {
-  if (!token) return;
+/** Borra un archivo. Devuelve false si no se pudo (no corta la operación). */
+export async function deleteFile(pathname: string): Promise<boolean> {
+  if (!token) return false;
   try {
     await del(pathname, { token });
+    return true;
   } catch (e) {
-    console.error("[blob] No se pudo borrar el archivo:", e);
+    console.error("[blob] No se pudo borrar el archivo:", e instanceof Error ? e.message : e);
+    return false;
   }
+}
+
+/** Verifica que el token sirva y el store exista, antes de operar en lote. */
+export async function checkBlobAccess(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await list({ token: requireToken(), limit: 1 });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Todos los pathnames guardados bajo un prefijo (para detectar huérfanos). */
+export async function listAllFiles(prefix = "payslips/"): Promise<string[]> {
+  const out: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const res = await list({ token: requireToken(), prefix, cursor, limit: 1000 });
+    out.push(...res.blobs.map((b) => b.pathname));
+    cursor = res.hasMore ? res.cursor : undefined;
+  } while (cursor);
+  return out;
 }

@@ -171,6 +171,36 @@ de prueba se borran junto con esa empresa.
 **¿Se borran las tablas?**
 No. La estructura queda intacta; solo se vacían los datos.
 
+**Me dio "This store does not exist" al borrar los archivos.**
+El `BLOB_READ_WRITE_TOKEN` de tu `.env` no es válido — lo más común es que haya
+quedado el valor de ejemplo (`vercel_blob_rw_xxxxxxxxxx`). El token real está en
+**Vercel → Storage → tu Blob store**. Copialo al `.env` y después corré:
+
+```bash
+npm run blob:huerfanos            # lista los PDF que quedaron sin recibo
+npm run blob:huerfanos:confirmar  # los borra
+```
+
+Desde esta versión el script **se detiene antes de tocar la base** si no puede
+acceder al almacenamiento, justamente para no dejar archivos huérfanos.
+
+---
+
+## Archivos huérfanos
+
+Un archivo huérfano es un PDF que sigue en el almacenamiento pero ya no está
+referenciado por ningún recibo. No se puede ver desde la app (nadie tiene su
+enlace), pero ocupa espacio y contiene datos personales, así que conviene
+borrarlo.
+
+```bash
+npm run blob:huerfanos            # simula: los lista
+npm run blob:huerfanos:confirmar  # los borra
+```
+
+También se pueden borrar a mano desde **Vercel → Storage → tu Blob store**,
+navegando la carpeta `payslips/`.
+
 **Corrí el script y no borró nada.**
 Casi seguro usaste `npm run db:limpiar -- --confirmar` desde PowerShell: se come
 el `--` y el flag nunca llega. Usá `npm run db:limpiar:confirmar`.
