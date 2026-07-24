@@ -3,8 +3,9 @@ REM ---------------------------------------------------------------------------
 REM Importa los recibos de la carpeta mensual y deja registro en logs\.
 REM Pensado para el Programador de tareas de Windows (ver docs/IMPORTADOR.md).
 REM
-REM Uso manual:  scripts\importar-recibos.cmd
-REM Simulacion:  scripts\importar-recibos.cmd --dry-run
+REM Este .cmd es el punto de entrada de la carga REAL: por eso pasa
+REM --confirmar. Para simular, corre el script directamente:
+REM     npx tsx scripts/import-payslips.ts
 REM ---------------------------------------------------------------------------
 
 setlocal
@@ -19,7 +20,7 @@ echo.>> "%LOG%"
 echo ==========================================================>> "%LOG%"
 echo [%date% %time%] Iniciando importacion>> "%LOG%"
 
-call npx tsx scripts/import-payslips.ts %* >> "%LOG%" 2>&1
+call npx tsx scripts/import-payslips.ts --confirmar %* >> "%LOG%" 2>&1
 set "CODE=%ERRORLEVEL%"
 
 if not "%CODE%"=="0" (

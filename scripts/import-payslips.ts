@@ -13,9 +13,14 @@ import { detectPayslip } from "./lib/parse-payslip";
  * PC solo guarda una API key (revocable con un clic), en vez de las
  * credenciales de Postgres y de Blob, que son mucho más peligrosas.
  *
- *   npx tsx scripts/import-payslips.ts --dry-run
- *   npx tsx scripts/import-payslips.ts --periodo 2026-06
- *   npx tsx scripts/import-payslips.ts --empresa "Acme SRL"
+ * Por defecto SIMULA: informa qué haría sin cargar nada. Para importar de
+ * verdad hay que agregar --confirmar. Es a propósito: en PowerShell, `npm run`
+ * se come los flags, y así el error siempre cae del lado seguro.
+ *
+ *   npx tsx scripts/import-payslips.ts                → simulación
+ *   npx tsx scripts/import-payslips.ts --confirmar    → importa de verdad
+ *   npx tsx scripts/import-payslips.ts --confirmar --periodo 2026-06
+ *   npx tsx scripts/import-payslips.ts --confirmar --empresa "Acme SRL"
  *
  * Se configura UNA sola vez en el .env de esa PC:
  *   API_KEY        (único obligatorio) key de acceso total, Configuración → API keys
@@ -57,7 +62,9 @@ function parseArgs() {
     return i >= 0 ? args[i + 1] : undefined;
   };
   return {
-    dryRun: args.includes("--dry-run"),
+    // Falla seguro: si el flag no llega (PowerShell se come los flags de
+    // `npm run`), lo peor que pasa es que simule en vez de importar.
+    dryRun: !args.includes("--confirmar"),
     periodo: get("--periodo"),
     empresa: get("--empresa"),
     root: get("--carpeta") ?? process.env.RECIBOS_ROOT,
@@ -170,7 +177,7 @@ async function main() {
   let scope = "studio";
 
   if (args.dryRun) {
-    console.log("🧪 Simulación: no se sube nada (no requiere API).\n");
+    console.log("🧪 SIMULACIÓN — no se sube nada. Para importar de verdad agregá --confirmar.\n");
     if (api) scope = (await api.me().catch(() => ({ scope: "studio" }))).scope;
   } else {
     if (!api) {
@@ -303,7 +310,8 @@ async function main() {
   }
 
   if (args.dryRun) {
-    console.log("\n🧪 Simulación terminada. Sacá --dry-run para importar de verdad.");
+    console.log("\n🧪 Simulación terminada. No se cargó nada.");
+    console.log("   Para importar de verdad:  npx tsx scripts/import-payslips.ts --confirmar");
     return;
   }
 

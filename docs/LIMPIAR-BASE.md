@@ -55,11 +55,18 @@ las que esperabas, frená y averiguá por qué antes de borrar.
 ### Paso 2 — Borrar de verdad
 
 ```bash
-npm run db:limpiar -- --confirmar
+npm run db:limpiar:confirmar
 ```
 
-> Acordate del `--` suelto: sin él, npm se queda con el `--confirmar` y el script
-> vuelve a correr en modo simulación.
+> ⚠️ **No uses `npm run db:limpiar -- --confirmar` en PowerShell.** PowerShell se
+> come el `--` y el flag nunca llega al script, así que vuelve a simular y parece
+> que "no hizo nada". Por eso existe el comando `db:limpiar:confirmar`, que lleva
+> el flag adentro y funciona siempre.
+>
+> La alternativa directa, que también funciona siempre:
+> ```bash
+> npx tsx scripts/limpiar-datos.ts --confirmar
+> ```
 
 Al terminar vas a ver:
 
@@ -94,9 +101,10 @@ no te quedes afuera del portal.
    (también tal cual figuran en el recibo).
 4. Creá los **accesos** que hagan falta: el del administrador de cada empresa y
    el de cada empleado, desde su ficha.
-5. Recién ahí corré el importador. Acordate de probar primero en seco:
+5. Recién ahí corré el importador. Por defecto simula, así que probá primero así:
    ```bash
-   npm run import:recibos -- --dry-run
+   npm run import:recibos            # simula, no carga nada
+   npm run import:recibos:confirmar  # carga de verdad
    ```
 
 > El importador **no da de alta empresas ni empleados**: si no existen, el
@@ -164,5 +172,5 @@ de prueba se borran junto con esa empresa.
 No. La estructura queda intacta; solo se vacían los datos.
 
 **Corrí el script y no borró nada.**
-Seguro faltó el `--` antes de `--confirmar`. El comando completo es:
-`npm run db:limpiar -- --confirmar`
+Casi seguro usaste `npm run db:limpiar -- --confirmar` desde PowerShell: se come
+el `--` y el flag nunca llega. Usá `npm run db:limpiar:confirmar`.

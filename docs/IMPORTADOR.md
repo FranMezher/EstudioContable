@@ -101,28 +101,37 @@ re-corre.
    > Nunca se sube a GitHub. Si la PC se pierde, desactivás la key desde el panel
    > y queda anulada al instante.
 
-4. **Probá primero en seco.** Siempre.
+4. **Probá primero en seco.** Es lo que hace por defecto:
    ```bash
-   npx tsx scripts/import-payslips.ts --dry-run --carpeta "C:\Recibos"
+   npm run import:recibos
    ```
-   Informa qué detecta en cada archivo sin subir nada — y **no necesita API key**,
+   Informa qué detecta en cada archivo **sin cargar nada** — y no necesita API key,
    así que sirve para verificar el reconocimiento antes de configurar nada.
 
-5. **Importá de verdad:**
+5. **Importá de verdad**, agregando la confirmación:
    ```bash
-   npx tsx scripts/import-payslips.ts
+   npm run import:recibos:confirmar
    ```
 
-> **Si usás `npm run`, separá los flags con `--`**, porque si no npm se los queda:
+> ### ⚠️ Ojo con los flags en PowerShell
+> **PowerShell se come los flags de `npm run`**, incluido el separador `--`. Es
+> decir, `npm run import:recibos -- --carpeta "X" --dry-run` **no** le pasa nada
+> al script.
+>
+> Por eso el importador **simula por defecto** y solo carga si recibe
+> `--confirmar`: si un flag se pierde, lo peor que pasa es que simule.
+>
+> Para pasar opciones, llamá al script directamente:
 > ```bash
-> npm run import:recibos -- --carpeta "C:\Recibos" --dry-run
+> npx tsx scripts/import-payslips.ts --confirmar --carpeta "C:\Recibos"
 > ```
 
 ### Opciones
 
 | Flag | Para qué |
 |---|---|
-| `--dry-run` | Informa sin subir nada |
+| *(ninguno)* | **Simula**: informa sin cargar nada |
+| `--confirmar` | Carga de verdad |
 | `--periodo 2026-06` | Solo los archivos cuya ruta contenga ese texto |
 | `--empresa "Acme SRL"` | Solo los de esa empresa |
 | `--carpeta D:\Otra\Ruta` | Usa esa carpeta en vez de `RECIBOS_ROOT` |
