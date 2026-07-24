@@ -72,9 +72,7 @@ export function withApi(
     } catch (e) {
       if (e instanceof ServiceError) return fail(e.message, e.status);
       console.error("[api] error:", e);
-      // TEMPORAL (diagnóstico): exponer el detalle del error interno.
-      const detalle = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-      return fail(`Error interno del servidor — ${detalle}`, 500);
+      return fail("Error interno del servidor", 500);
     }
   };
 }
