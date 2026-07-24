@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeCuil, isValidCuil } from "@/lib/constants";
 import { ServiceError, assertCanWrite } from "@/server/scope";
-import { svcCreateEmployee, svcCreatePayslip, type Actor } from "@/server/services";
+import { svcCreatePayslip, type Actor } from "@/server/services";
 import type { ImportItemStatus } from "@/generated/prisma/enums";
 
 /**
@@ -19,7 +19,7 @@ export type ImportPayslipInput = {
   /** Legajo (del nombre del archivo o del PDF). Matcheo secundario. */
   legajo?: string | null;
   dni?: string | null;
-  /** Nombre para dar de alta al empleado si no existe todavía. */
+  /** Nombre leído del PDF. Solo informativo (el importador no crea empleados). */
   employeeName?: string | null;
   periodMonth: number;
   periodYear: number;
@@ -35,7 +35,6 @@ export type ImportPayslipResult = {
   status: Extract<ImportItemStatus, "OK" | "DUPLICADO">;
   payslipId?: string;
   employeeId: string;
-  employeeCreated: boolean;
 };
 
 /**
@@ -97,41 +96,28 @@ export async function svcImportPayslip(
       status: "DUPLICADO",
       payslipId: yaImportado.id,
       employeeId: yaImportado.employeeId,
-      employeeCreated: false,
     };
   }
 
   // Matcheo del empleado: primero por CUIL (único global), después por legajo.
-  let employee =
+  // El importador NUNCA da de alta empleados: si no existe, el archivo queda
+  // pendiente y lo carga una persona desde el panel.
+  const employee =
     (cuil
       ? await prisma.employee.findUnique({ where: { companyId_cuil: { companyId: company.id, cuil } } })
       : null) ??
     (legajo
       ? await prisma.employee.findUnique({ where: { companyId_legajo: { companyId: company.id, legajo } } })
       : null);
-  let employeeCreated = false;
 
   if (!employee) {
-    if (!cuil) {
-      throw new ServiceError(
-        `El legajo ${legajo} no existe en ${company.name} y sin CUIL no puedo darlo de alta`,
-        404
-      );
-    }
-    if (!input.employeeName?.trim()) {
-      throw new ServiceError(
-        `El CUIL ${cuil} no existe en ${company.name} y no vino el nombre para darlo de alta`,
-        404
-      );
-    }
-    // Alta automática: queda pendiente de revisión del estudio y NO se le
-    // genera acceso al portal solo.
-    employee = await svcCreateEmployee(
-      actor,
-      { companyId: company.id, name: input.employeeName, cuil, legajo, dni: input.dni ?? null },
-      { autoCreated: true }
+    const quien = [legajo ? `legajo ${legajo}` : null, cuil ? `CUIL ${cuil}` : null]
+      .filter(Boolean)
+      .join(" / ");
+    throw new ServiceError(
+      `No existe el empleado (${quien}) en ${company.name}. Cargalo primero desde el panel.`,
+      404
     );
-    employeeCreated = true;
   }
 
   // Misma liquidación ya cargada para este empleado → duplicado (permite
@@ -143,7 +129,7 @@ export async function svcImportPayslip(
       select: { id: true },
     });
     if (existente) {
-      return { status: "DUPLICADO", payslipId: existente.id, employeeId: employee.id, employeeCreated };
+      return { status: "DUPLICADO", payslipId: existente.id, employeeId: employee.id };
     }
   }
 
@@ -159,7 +145,7 @@ export async function svcImportPayslip(
     source: "IMPORT",
   });
 
-  return { status: "OK", payslipId: payslip.id, employeeId: employee.id, employeeCreated };
+  return { status: "OK", payslipId: payslip.id, employeeId: employee.id };
 }
 
 // ---------------------------------------------------------------------------

@@ -71,11 +71,14 @@ Body:
 }
 ```
 
-- `companyRef`: id o CUIT de la empresa. Se ignora si la key ya está limitada a una.
-- `employeeName`: se usa solo si el CUIL todavía no existe. En ese caso se da de alta al empleado marcado como "creado automáticamente", para que el estudio lo revise. **No se le crea acceso al portal**: eso lo confirma siempre una persona.
+- `companyRef`: id o CUIT de la empresa. Se ignora si la key ya está limitada a una. Si no viene, se resuelve por `employerCuit`.
+- `cuil` / `legajo`: identifican al empleado (primero por CUIL, si no por legajo dentro de la empresa).
+- `employeeName`: informativo.
+
+> **El endpoint no da de alta nada.** Si la empresa o el empleado no existen, responde `404` y no carga el archivo. Las altas se hacen desde el panel.
 - `sourceHash`: SHA-256 del archivo. Es lo que hace idempotente al importador — si ese hash ya está cargado, la respuesta es `DUPLICADO` y no se sube nada.
 
-Respuesta: `{ "status": "OK" | "DUPLICADO", "payslipId", "employeeId", "employeeCreated" }`
+Respuesta: `{ "status": "OK" | "DUPLICADO", "payslipId", "employeeId" }`
 
 El `bulk` devuelve `207` con el resultado archivo por archivo: uno que falla no frena a los demás.
 

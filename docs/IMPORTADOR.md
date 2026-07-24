@@ -38,6 +38,12 @@ que adentro trae todos los datos en texto.
 4. **Si el PDF es un escaneo sin texto** (no se puede leer el período), el
    archivo queda listado en *Estudio → Importaciones*. Nunca se asigna por aproximación.
 
+> ### El importador nunca da de alta nada
+> Si la **empresa** no existe, o el **empleado** no existe en esa empresa, el
+> archivo **no se carga**: queda listado en *Estudio → Importaciones* con el
+> motivo. Las empresas y los empleados se dan de alta a mano desde el panel.
+> Después volvés a correr el importador y esos archivos entran solos.
+
 La empresa se resuelve por el CUIT que viene en el PDF; si no, por el mapa
 `scripts/import.config.json` (nombre de carpeta → CUIT). Con el formato actual,
 el mapa suele no hacer falta.
@@ -76,14 +82,20 @@ re-corre.
 
 4. **Probá primero en seco.** Siempre.
    ```bash
-   npx tsx scripts/import-payslips.ts --dry-run
+   npx tsx scripts/import-payslips.ts --dry-run --carpeta "C:\Recibos"
    ```
-   Informa qué haría con cada archivo sin subir nada. Revisá que los CUILs y períodos detectados sean los correctos antes de seguir.
+   Informa qué detecta en cada archivo sin subir nada — y **no necesita API key**,
+   así que sirve para verificar el reconocimiento antes de configurar nada.
 
 5. **Importá de verdad:**
    ```bash
    npx tsx scripts/import-payslips.ts
    ```
+
+> **Si usás `npm run`, separá los flags con `--`**, porque si no npm se los queda:
+> ```bash
+> npm run import:recibos -- --carpeta "C:\Recibos" --dry-run
+> ```
 
 ### Opciones
 
@@ -113,17 +125,21 @@ Con el **Programador de tareas de Windows**:
 
 ## Qué mirar después de cada corrida
 
-En *Estudio → Importaciones*:
+En *Estudio → Importaciones* aparecen los **archivos sin asignar**, con el motivo
+de cada uno. Los casos típicos:
 
-- **Empleados creados automáticamente**: el importador los dio de alta a partir del CUIL. Verificá el nombre y creales el acceso al portal desde su ficha.
-  El importador **nunca crea accesos solo**: un CUIL mal leído no puede terminar en un acceso a los recibos de otra persona. Ese paso lo confirma siempre una persona.
-- **Archivos sin asignar**: con el motivo de cada uno. Se resuelven corrigiendo el nombre del archivo (o el mapa de empresas) y volviendo a correr, o cargándolos a mano.
+- *Falta dar de alta la empresa* → creala en el panel con el CUIT que figura en el recibo.
+- *Falta dar de alta al empleado* → cargalo en su empresa con el CUIL y el legajo del recibo.
+
+Una vez resueltos, volvés a correr el importador y esos archivos se cargan solos
+(los que ya estaban cargados se saltean, no se duplican).
 
 ## Problemas frecuentes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
-| `sin empresa` | La carpeta no está en `import.config.json` | Agregá esa carpeta al mapa |
+| `Falta dar de alta la empresa` | Esa empresa (CUIT) todavía no existe en el portal | Creala desde el panel y volvé a correr |
+| `Falta dar de alta al empleado` | Ese legajo/CUIL no existe en la empresa | Cargá al empleado y volvé a correr |
 | `sin CUIL` | El PDF es un escaneo sin capa de texto y el nombre no tiene el CUIL | Renombrá el archivo con el CUIL, o cargalo a mano |
 | `sin período` | El nombre no tiene fecha reconocible | Renombrá la carpeta del mes como `2026-06` |
 | `duplicado` | Ese recibo ya estaba cargado | Es normal al re-correr; no hace falta hacer nada |

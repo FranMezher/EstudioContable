@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AlertTriangle, CheckCircle2, FileDown } from "lucide-react";
 import { requireStudio } from "@/lib/session";
 import { getImportRuns, getPendingReview } from "@/server/queries";
@@ -11,8 +10,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 const STATUS_LABEL: Record<string, string> = {
   DUPLICADO: "Ya estaba cargado",
-  SIN_EMPLEADO: "No se encontró el empleado",
-  SIN_EMPRESA: "No se encontró la empresa",
+  SIN_EMPLEADO: "Falta dar de alta al empleado",
+  SIN_EMPRESA: "Falta dar de alta la empresa",
   SIN_PERIODO: "No se pudo leer el período",
   ERROR: "Error",
 };
@@ -28,50 +27,18 @@ export default async function ImportacionesPage() {
         description="Corridas del importador de la carpeta mensual y lo que quedó sin asignar."
       />
 
-      {review.autoEmployees.length > 0 && (
+      {review.pendingItems.length > 0 && (
         <Card className="mb-6 border-amber-200">
           <CardHeader className="border-amber-100">
             <CardTitle className="flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-4 w-4" />
-              Empleados creados automáticamente ({review.autoEmployees.length})
+              Archivos sin asignar ({review.pendingItems.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-sm text-slate-600">
-              El importador los dio de alta a partir del CUIL del recibo. Revisá que el nombre esté
-              bien y creales el acceso al portal desde su ficha.
-            </p>
-            <ul className="divide-y divide-slate-100">
-              {review.autoEmployees.map((e) => (
-                <li key={e.id}>
-                  <Link
-                    href={`/estudio/empleados/${e.id}`}
-                    className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">{e.name}</p>
-                      <p className="truncate text-xs text-slate-500">
-                        {formatCuil(e.cuil)} · {e.company.name}
-                      </p>
-                    </div>
-                    <Badge tone="warning">Revisar</Badge>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {review.pendingItems.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Archivos sin asignar ({review.pendingItems.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-3 text-sm text-slate-600">
-              El importador no pudo determinar a quién corresponden. Cargalos a mano desde la ficha
-              del empleado o corregí el nombre del archivo y volvé a correrlo.
+              El importador no los cargó porque no encontró la empresa o el empleado. Dalos de alta
+              desde el panel y volvé a correr el importador, o cargá el recibo a mano.
             </p>
             <ul className="divide-y divide-slate-100">
               {review.pendingItems.map((i) => (
@@ -80,10 +47,9 @@ export default async function ImportacionesPage() {
                     <p className="truncate text-sm font-medium text-slate-800">{i.fileName}</p>
                     <p className="truncate text-xs text-slate-500">
                       {i.message ?? STATUS_LABEL[i.status] ?? i.status}
-                      {i.detectedCuil ? ` · CUIL detectado ${formatCuil(i.detectedCuil)}` : ""}
-                      {i.periodYear
-                        ? ` · ${periodoLabel(i.periodMonth, i.periodYear)}`
-                        : ""}
+                      {i.detectedLegajo ? ` · Legajo ${i.detectedLegajo}` : ""}
+                      {i.detectedCuil ? ` · CUIL ${formatCuil(i.detectedCuil)}` : ""}
+                      {i.periodYear ? ` · ${periodoLabel(i.periodMonth, i.periodYear)}` : ""}
                     </p>
                   </div>
                   <Badge tone={i.status === "DUPLICADO" ? "neutral" : "danger"}>

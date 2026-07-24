@@ -17,7 +17,7 @@ export default async function EstudioHome() {
     getCompanies(scope),
   ]);
 
-  const pendientes = review.autoEmployees.length + review.pendingItems.length;
+  const pendientes = review.pendingItems.length;
   const sinRecibos = companies.filter((c) => c.payslipCount === 0);
 
   return (
@@ -48,7 +48,7 @@ export default async function EstudioHome() {
           <CardHeader className="border-amber-100">
             <CardTitle className="flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-4 w-4" />
-              Hay {pendientes} cosa{pendientes === 1 ? "" : "s"} para revisar
+              Hay {pendientes} archivo{pendientes === 1 ? "" : "s"} sin asignar
             </CardTitle>
             <Link
               href="/estudio/importaciones"
@@ -58,15 +58,9 @@ export default async function EstudioHome() {
             </Link>
           </CardHeader>
           <CardContent className="text-sm text-amber-900">
-            {review.autoEmployees.length > 0 && (
-              <p>
-                {review.autoEmployees.length} empleado(s) creados automáticamente por el importador,
-                sin confirmar.
-              </p>
-            )}
-            {review.pendingItems.length > 0 && (
-              <p>{review.pendingItems.length} archivo(s) que el importador no pudo asignar.</p>
-            )}
+            <p>
+              El importador no pudo cargarlos porque falta dar de alta la empresa o el empleado.
+            </p>
           </CardContent>
         </Card>
       )}

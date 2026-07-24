@@ -326,24 +326,20 @@ export async function getDashboardStats(scope: Scope) {
   return { companies, employees, payslips, lastPeriod: lastPayslip };
 }
 
-/** Empleados creados por el importador que el estudio todavía no revisó. */
+/**
+ * Archivos que el importador no pudo asignar y siguen sin resolver.
+ * (El importador no da de alta empleados: si no existe, el archivo queda acá.)
+ */
 export async function getPendingReview(scope: Scope) {
-  const [autoEmployees, pendingItems] = await Promise.all([
-    prisma.employee.findMany({
-      where: scoped(employeeWhere(scope), { autoCreated: true }),
-      include: { company: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-    prisma.importItem.findMany({
-      where: { resolvedAt: null, status: { not: "OK" } },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: { run: { select: { sourceLabel: true, startedAt: true } } },
-    }),
-  ]);
+  void scope;
+  const pendingItems = await prisma.importItem.findMany({
+    where: { resolvedAt: null, status: { not: "OK" } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: { run: { select: { sourceLabel: true, startedAt: true } } },
+  });
 
-  return { autoEmployees, pendingItems };
+  return { pendingItems };
 }
 
 export async function getImportRuns(limit = 20) {

@@ -4,6 +4,12 @@ import { decodeBase64File, ok, readJson, withApi } from "@/server/api/http";
 
 const MAX_ITEMS = 50;
 
+/** Distingue "no está la empresa" de "no está el empleado" para el informe. */
+function clasificar(e: unknown, message: string): string {
+  if (!(e instanceof ServiceError) || e.status !== 404) return "ERROR";
+  return /empresa/i.test(message) ? "SIN_EMPRESA" : "SIN_EMPLEADO";
+}
+
 type Item = {
   companyRef?: string;
   employerCuit?: string;
@@ -41,7 +47,6 @@ export const POST = withApi(async ({ actor, req }) => {
     message?: string;
     payslipId?: string;
     employeeId?: string;
-    employeeCreated?: boolean;
   }> = [];
 
   for (const [index, item] of items.entries()) {
@@ -63,11 +68,12 @@ export const POST = withApi(async ({ actor, req }) => {
       });
       results.push({ index, fileName: item.fileName, ...res });
     } catch (e) {
+      const message = e instanceof Error ? e.message : "Error desconocido";
       results.push({
         index,
         fileName: item.fileName ?? `(item ${index})`,
-        status: e instanceof ServiceError && e.status === 404 ? "SIN_EMPLEADO" : "ERROR",
-        message: e instanceof Error ? e.message : "Error desconocido",
+        status: clasificar(e, message),
+        message,
       });
     }
   }

@@ -148,17 +148,32 @@ async function main() {
   const apiUrl = process.env.API_URL;
   const apiKey = process.env.API_KEY;
 
-  if (!args.root) throw new Error("Falta RECIBOS_ROOT (o pasá --carpeta <ruta>)");
-  if (!apiUrl || !apiKey) throw new Error("Faltan API_URL y API_KEY en el .env");
+  if (!args.root) {
+    throw new Error(
+      "Falta indicar la carpeta. Poné RECIBOS_ROOT en el .env o pasá --carpeta <ruta>.\n" +
+        '   Con npm hay que separar los flags con "--":\n' +
+        '     npm run import:recibos -- --carpeta "ejemplos-recibos" --dry-run'
+    );
+  }
 
   const root = path.resolve(args.root);
   const config = await loadConfig();
-  const api = new Api(apiUrl, apiKey);
 
-  const me = await api.me();
-  console.log(`🔑 Conectado a ${apiUrl} (alcance: ${me.scope})`);
+  // En simulación no se sube nada, así que no se necesita API: sirve para
+  // probar el reconocimiento sin API key. Solo la carga real la exige.
+  const api = apiUrl && apiKey ? new Api(apiUrl, apiKey) : null;
+  let scope = "studio";
+
+  if (args.dryRun) {
+    console.log("🧪 Simulación: no se sube nada (no requiere API).\n");
+    if (api) scope = (await api.me().catch(() => ({ scope: "studio" }))).scope;
+  } else {
+    if (!api) throw new Error("Faltan API_URL y API_KEY en el .env");
+    const me = await api.me();
+    scope = me.scope;
+    console.log(`🔑 Conectado a ${apiUrl} (alcance: ${scope})`);
+  }
   console.log(`📁 Carpeta: ${root}`);
-  if (args.dryRun) console.log("🧪 Simulación: no se sube nada.\n");
 
   let archivos = await findPdfs(root);
   if (args.periodo) {
@@ -175,7 +190,7 @@ async function main() {
   console.log(`Encontré ${archivos.length} PDF(s).\n`);
 
   const label = `${root}${args.periodo ? ` · ${args.periodo}` : ""}`;
-  const run = args.dryRun ? null : await api.startRun(label, false);
+  const run = args.dryRun || !api ? null : await api.startRun(label, false);
   const reportes: Reporte[] = [];
 
   for (const filePath of archivos) {
@@ -201,7 +216,7 @@ async function main() {
       // La empresa puede salir de la carpeta (config) o del CUIT del empleador
       // que viene dentro del PDF. Solo falla si no hay ninguno de los dos.
       const tieneEmpresa = companyRef || detected.employerCuit;
-      if (!tieneEmpresa && me.scope === "studio") {
+      if (!tieneEmpresa && scope === "studio") {
         reportes.push({
           ...base,
           status: "SIN_EMPRESA",
@@ -240,7 +255,7 @@ async function main() {
         continue;
       }
 
-      const res = await api.importPayslip({
+      const res = await api!.importPayslip({
         companyRef,
         employerCuit: detected.employerCuit,
         cuil: detected.cuil,
@@ -265,11 +280,13 @@ async function main() {
       console.log(`  ${res.status === "OK" ? "✓" : "="} ${rel} — ${res.status.toLowerCase()}`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Error desconocido";
-      reportes.push({
-        fileName: rel,
-        status: message.includes("no existe") || message.includes("CUIL") ? "SIN_EMPLEADO" : "ERROR",
-        message,
-      });
+      // El servidor distingue los dos casos por el texto del mensaje.
+      const status: ItemStatus = /empresa/i.test(message)
+        ? "SIN_EMPRESA"
+        : /empleado|legajo|CUIL/i.test(message)
+          ? "SIN_EMPLEADO"
+          : "ERROR";
+      reportes.push({ fileName: rel, status, message });
       console.log(`  ✗ ${rel} — ${message}`);
     }
   }
@@ -279,7 +296,7 @@ async function main() {
     return;
   }
 
-  if (run) await api.finishRun(run.id, reportes);
+  if (run && api) await api.finishRun(run.id, reportes);
 
   const ok = reportes.filter((r) => r.status === "OK").length;
   const dup = reportes.filter((r) => r.status === "DUPLICADO").length;
