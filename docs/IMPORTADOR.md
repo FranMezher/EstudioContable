@@ -29,13 +29,21 @@ Lo importante es que **el nombre de alguna carpeta del camino identifique a la e
 
 ## Cómo decide a quién corresponde cada archivo
 
-El importador está afinado para el formato real de los recibos, cuyo nombre es
-`Recibos de Sueldos-Liq 1207 -Leg 1020.pdf` (número de liquidación + legajo) y
-que adentro trae todos los datos en texto.
+El importador está afinado para los recibos reales del estudio. Acepta las dos
+formas de nombre que aparecen:
 
-1. **Del nombre del archivo** saca el **legajo** (`Leg 1020`) y el **número de
-   liquidación** (`Liq 1207`).
-2. **Del contenido del PDF** saca el resto (el período NO está en el nombre):
+- `Recibos de Sueldos - Liq 755.pdf` (solo el número de liquidación)
+- `Recibos de Sueldos-Liq 1207 -Leg 1020.pdf` (con el legajo también)
+
+Y entiende los **dos formatos de PDF** de los sistemas de liquidación que se
+usan, que ordenan los datos distinto por dentro (uno pone `NETO A COBRAR` y el
+otro `SUELDO NETO`, uno escribe el CUIT antes de su etiqueta, etc.). Cada dato se
+busca con varios patrones, así que no importa cuál de los dos sea.
+
+1. **Del nombre del archivo** saca el **número de liquidación** (`Liq 755`) y, si
+   está, el **legajo** (`Leg 1020`).
+2. **Del contenido del PDF** saca el resto (el período nunca está en el nombre, y
+   el legajo tampoco cuando el nombre no lo trae):
    - CUIT del empleador → identifica la **empresa** sola, sin depender de la carpeta.
    - CUIL, legajo, DNI y nombre del **empleado**.
    - Período ("Remuneración Correspondiente a: ABRIL 2026").
