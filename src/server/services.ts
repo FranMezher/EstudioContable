@@ -294,7 +294,18 @@ export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
     // El discriminador evita pisar otro recibo del mismo mes.
     discriminator: liqNumber ?? String(Date.now()),
   });
-  const { path: filePath, size } = await uploadPayslipFile(input.file, path);
+  // Si el almacenamiento falla, damos un mensaje claro en vez de un 500 opaco.
+  let filePath: string;
+  let size: number;
+  try {
+    ({ path: filePath, size } = await uploadPayslipFile(input.file, path));
+  } catch (e) {
+    console.error("[payslip] fallo al subir el archivo:", e);
+    throw new ServiceError(
+      "No se pudo guardar el archivo en el almacenamiento (revisá la conexión de Vercel Blob).",
+      502
+    );
+  }
 
   const payslip = await prisma.payslip.create({
     data: {
