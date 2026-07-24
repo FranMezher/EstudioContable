@@ -52,6 +52,7 @@ next-env.d.ts
 # Recibos de sueldo: contienen datos personales reales, nunca van al repo
 *.pdf
 *.PDF
+*.zip
 /ejemplos-recibos/
 
 # registros del importador
