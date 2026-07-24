@@ -119,22 +119,66 @@ re-corre.
 | `--empresa "Acme SRL"` | Solo los de esa empresa |
 | `--carpeta D:\Otra\Ruta` | Usa esa carpeta en vez de `RECIBOS_ROOT` |
 
-## Correrlo solo todos los meses
+## Automatizarlo (correr todos los días a una hora fija)
 
-El script es **idempotente**: cada archivo se identifica por su SHA-256 y cada empleado no puede tener dos recibos del mismo período. Volver a correrlo sobre la misma carpeta no duplica nada, así que se puede programar sin miedo.
+El script es **idempotente**: cada archivo se identifica por su SHA-256 y una
+misma liquidación no se carga dos veces. Volver a correrlo sobre la misma
+carpeta **no duplica nada**, así que se puede programar sin miedo. Correrlo a
+diario es lo más cómodo: los días que no hay recibos nuevos simplemente no hace
+nada, y el día que aparecen se cargan solos.
 
-Con el **Programador de tareas de Windows**:
+### Opción A — Un comando (la más rápida)
 
-1. Abrí *Programador de tareas* → **Crear tarea básica**.
+Abrí **PowerShell como administrador** en la carpeta del proyecto y pegá esto
+(cambiá la hora si querés):
+
+```powershell
+$accion  = New-ScheduledTaskAction -Execute "C:\EstudioContable\scripts\importar-recibos.cmd" -WorkingDirectory "C:\EstudioContable"
+$disparo = New-ScheduledTaskTrigger -Daily -At 7:00am
+$config  = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+Register-ScheduledTask -TaskName "Importar recibos" -Action $accion -Trigger $disparo -Settings $config `
+  -Description "Importa los recibos de sueldo de la carpeta mensual al portal."
+```
+
+`-StartWhenAvailable` es importante: si la PC estaba apagada a las 7:00, la tarea
+se ejecuta apenas se prende.
+
+### Opción B — Con el Programador de tareas (por pantalla)
+
+1. Abrí **Programador de tareas** → **Crear tarea básica**.
 2. Nombre: `Importar recibos`.
-3. Desencadenador: **Mensualmente**, día 5 a las 07:00 (o diario a la madrugada, es igual de seguro).
+3. Desencadenador: **Diariamente**, a las **07:00**.
 4. Acción: **Iniciar un programa**
    - Programa: `C:\EstudioContable\scripts\importar-recibos.cmd`
    - Iniciar en: `C:\EstudioContable`
-5. En *Condiciones*, destildá "Iniciar solo si el equipo está con CA" si es una notebook.
-6. En *Configuración*, tildá "Ejecutar la tarea lo antes posible si se omitió un inicio programado" — cubre los días que la máquina estuvo apagada.
+5. En *Condiciones*, destildá **"Iniciar solo si el equipo está con CA"** si es una notebook.
+6. En *Configuración*, tildá **"Ejecutar la tarea lo antes posible si se omitió un inicio programado"**.
 
-> El importador es la única pieza que depende de que esa PC esté encendida. La app y los recibos ya cargados siguen online igual. Si un mes no corre, se puede correr después a mano o cargar los recibos desde el panel.
+### Cómo saber qué pasó en cada corrida
+
+Cada ejecución queda registrada en **`logs\importador.log`**, dentro de la carpeta
+del proyecto. Para ver las últimas líneas:
+
+```powershell
+Get-Content logs\importador.log -Tail 40 -Encoding UTF8
+```
+
+Y en el portal, *Estudio → Importaciones* muestra el historial de corridas y los
+archivos que quedaron sin asignar.
+
+### Comandos útiles de la tarea
+
+```powershell
+Start-ScheduledTask   -TaskName "Importar recibos"   # correrla ahora, para probar
+Get-ScheduledTaskInfo -TaskName "Importar recibos"   # última ejecución y resultado
+Disable-ScheduledTask -TaskName "Importar recibos"   # pausarla
+Unregister-ScheduledTask -TaskName "Importar recibos" -Confirm:$false  # eliminarla
+```
+
+> **Lo único que no es 24/7 es esto.** El importador depende de que esa PC esté
+> encendida; la app y los recibos ya cargados siguen online igual. Si un día no
+> corre, con `-StartWhenAvailable` se recupera solo la próxima vez que se prenda,
+> y siempre queda la carga manual desde el panel.
 
 ## Qué mirar después de cada corrida
 
