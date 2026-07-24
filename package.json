@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:limpiar": "tsx scripts/limpiar-datos.ts",
     "import:recibos": "tsx scripts/import-payslips.ts",
     "postinstall": "prisma generate"
   },

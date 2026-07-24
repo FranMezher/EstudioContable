@@ -66,6 +66,7 @@ SEED_DEMO=1 npm run db:seed
 - `npm run db:push` — sincroniza el esquema con la base
 - `npm run db:seed` — crea el usuario del estudio (`SEED_DEMO=1` agrega datos de prueba)
 - `npm run db:studio` — explorador visual de la base
+- `npm run db:limpiar` — borra los datos de prueba y deja la base lista para producción (ver [docs/LIMPIAR-BASE.md](docs/LIMPIAR-BASE.md))
 - `npm run import:recibos` — importador de la carpeta mensual
 
 ## Carga de recibos
@@ -75,6 +76,13 @@ SEED_DEMO=1 npm run db:seed
 **Automática**: el script [scripts/import-payslips.ts](scripts/import-payslips.ts) recorre la carpeta donde el estudio guarda los recibos cada mes, deduce a qué empresa y empleado corresponde cada PDF (por el nombre del archivo y, si no alcanza, leyendo el CUIL adentro del PDF) y los sube por la API. Es idempotente: re-correrlo sobre la misma carpeta no duplica nada.
 
 Ver **[docs/IMPORTADOR.md](docs/IMPORTADOR.md)** para configurarlo y programarlo, y **[docs/API.md](docs/API.md)** para la API REST.
+
+## Pasar de las pruebas a producción
+
+Cuando termines de probar y vayas a cargar clientes reales, seguí
+**[docs/LIMPIAR-BASE.md](docs/LIMPIAR-BASE.md)**: explica cómo borrar los datos de
+prueba (incluidos los PDF del almacenamiento, para no dejar archivos huérfanos)
+conservando tu usuario del estudio, y en qué orden cargar empresas y empleados.
 
 ---
 
