@@ -2,7 +2,14 @@
 
 Toma los PDFs de la carpeta donde el estudio guarda los recibos cada mes y los sube al portal, asignando cada uno a su empresa y empleado.
 
-Corre en la PC del estudio y habla con la app **por la API REST**: esa máquina solo necesita una API key. No lleva credenciales de la base ni del almacenamiento.
+**Lo corre únicamente el estudio.** Los administradores de empresa no usan el
+script (no tienen acceso a la carpeta): ellos cargan los recibos a mano desde el
+panel, en la ficha de cada empleado.
+
+Corre en la PC del estudio y habla con la app **por la API REST**: esa máquina
+solo guarda una **API key**, que es revocable con un clic desde el panel. No
+lleva las credenciales de la base ni del almacenamiento, que serían mucho más
+peligrosas si esa PC se perdiera.
 
 ## Estructura de carpetas esperada
 
@@ -73,12 +80,18 @@ re-corre.
    ```
    La clave es el nombre de la carpeta en minúsculas; el valor, el CUIT sin guiones (o el id que aparece en la URL `/estudio/empresas/<id>`). Podés poner varias claves apuntando al mismo CUIT si la carpeta se escribe distinto según el mes.
 
-3. **Configurá el `.env`** en la PC del estudio:
+3. **Configurá el `.env`** en la PC del estudio. **Se hace una sola vez**: después
+   solo corrés el comando, sin pasar credenciales.
    ```
-   RECIBOS_ROOT=C:\Recibos
-   API_URL=https://recibos.mezherpampin.com.ar
    API_KEY=mp_live_xxxxxxxxxxxxxxxxxxxx
+   RECIBOS_ROOT=C:\Recibos
    ```
+   `API_URL` no hace falta: el script ya apunta al portal de producción. Solo se
+   agrega si el portal cambia de dirección (por ejemplo, al pasar a un dominio propio).
+
+   > La `API_KEY` va **únicamente en el `.env` de esa PC**, que está fuera del repo.
+   > Nunca se sube a GitHub. Si la PC se pierde, desactivás la key desde el panel
+   > y queda anulada al instante.
 
 4. **Probá primero en seco.** Siempre.
    ```bash

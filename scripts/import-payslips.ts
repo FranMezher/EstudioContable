@@ -9,21 +9,24 @@ import { detectPayslip } from "./lib/parse-payslip";
  * IMPORTADOR DE LA CARPETA MENSUAL DE RECIBOS
  * ---------------------------------------------------------------------------
  *
- * Corre en la PC del estudio y habla con la app por la API REST, no con la
- * base: la PC solo necesita una API key, ni credenciales de Postgres ni de
- * Blob.
+ * Lo corre el estudio. Habla con la app por la API REST, no con la base: la
+ * PC solo guarda una API key (revocable con un clic), en vez de las
+ * credenciales de Postgres y de Blob, que son mucho más peligrosas.
  *
  *   npx tsx scripts/import-payslips.ts --dry-run
  *   npx tsx scripts/import-payslips.ts --periodo 2026-06
  *   npx tsx scripts/import-payslips.ts --empresa "Acme SRL"
  *
- * Configuración por variables de entorno (.env):
- *   RECIBOS_ROOT   carpeta raíz a recorrer
- *   API_URL        URL de la app (ej: https://recibos.mezherpampin.com.ar)
- *   API_KEY        key generada en Configuración → API keys
+ * Se configura UNA sola vez en el .env de esa PC:
+ *   API_KEY        (único obligatorio) key de acceso total, Configuración → API keys
+ *   RECIBOS_ROOT   carpeta raíz a recorrer (o se pasa --carpeta)
+ *   API_URL        solo si el portal cambia de dirección (ver DEFAULT_API_URL)
  *
  * El mapa carpeta → empresa vive en scripts/import.config.json.
  */
+
+/** Dirección del portal. Se puede pisar con API_URL en el .env. */
+const DEFAULT_API_URL = "https://estudio-contable-mu.vercel.app";
 
 type Config = {
   /** Nombre de carpeta (en minúsculas) → id o CUIT de la empresa. */
@@ -145,7 +148,9 @@ class Api {
 
 async function main() {
   const args = parseArgs();
-  const apiUrl = process.env.API_URL;
+  // La URL del portal es siempre la misma, así que va por defecto: lo único
+  // que hay que configurar en la PC del estudio es API_KEY.
+  const apiUrl = process.env.API_URL || DEFAULT_API_URL;
   const apiKey = process.env.API_KEY;
 
   if (!args.root) {
@@ -161,14 +166,20 @@ async function main() {
 
   // En simulación no se sube nada, así que no se necesita API: sirve para
   // probar el reconocimiento sin API key. Solo la carga real la exige.
-  const api = apiUrl && apiKey ? new Api(apiUrl, apiKey) : null;
+  const api = apiKey ? new Api(apiUrl, apiKey) : null;
   let scope = "studio";
 
   if (args.dryRun) {
     console.log("🧪 Simulación: no se sube nada (no requiere API).\n");
     if (api) scope = (await api.me().catch(() => ({ scope: "studio" }))).scope;
   } else {
-    if (!api) throw new Error("Faltan API_URL y API_KEY en el .env");
+    if (!api) {
+      throw new Error(
+        "Falta API_KEY en el .env.\n" +
+          "   Generala una sola vez en el portal: Configuración → API keys (acceso total)\n" +
+          "   y agregá al .env de esta PC:  API_KEY=mp_live_xxxxx"
+      );
+    }
     const me = await api.me();
     scope = me.scope;
     console.log(`🔑 Conectado a ${apiUrl} (alcance: ${scope})`);
