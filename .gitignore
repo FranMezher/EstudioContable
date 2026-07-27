@@ -57,3 +57,7 @@ next-env.d.ts
 
 # registros del importador
 /logs/
+
+# mockups originales del logo (pesados, no van al repo)
+/Favicon.png
+/Favicon1.png

@@ -116,7 +116,7 @@ export function AppShell({
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <BrandMark size="sm" className="border-brand-200 bg-brand-700" />
+              <BrandMark size="sm" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-ink-800">{BRAND.name}</p>
                 <p className="text-[11px] text-ink-500">{subtitle}</p>
