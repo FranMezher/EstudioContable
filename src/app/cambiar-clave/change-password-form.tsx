@@ -58,7 +58,7 @@ export function ChangePasswordForm() {
           minLength={8}
           required
         />
-        <p className="mt-1.5 text-xs text-slate-500">Mínimo 8 caracteres.</p>
+        <p className="mt-1.5 text-xs text-ink-500">Mínimo 8 caracteres.</p>
       </div>
       <div>
         <Label htmlFor="confirmPassword">Repetir contraseña nueva</Label>

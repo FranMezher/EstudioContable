@@ -35,7 +35,7 @@ export default async function ConfiguracionPage() {
           <CardTitle>API keys</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-ink-500">
             El importador de recibos usa una de estas keys para subir los archivos de la carpeta
             mensual. Una key limitada a una empresa solo puede tocar los datos de esa empresa.
           </p>

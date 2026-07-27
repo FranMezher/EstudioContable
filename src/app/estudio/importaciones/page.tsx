@@ -36,16 +36,16 @@ export default async function ImportacionesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-3 text-sm text-slate-600">
+            <p className="mb-3 text-sm text-ink-600">
               El importador no los cargó porque no encontró la empresa o el empleado. Dalos de alta
               desde el panel y volvé a correr el importador, o cargá el recibo a mano.
             </p>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-ink-100">
               {review.pendingItems.map((i) => (
                 <li key={i.id} className="flex flex-wrap items-center gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{i.fileName}</p>
-                    <p className="truncate text-xs text-slate-500">
+                    <p className="truncate text-sm font-medium text-ink-800">{i.fileName}</p>
+                    <p className="truncate text-xs text-ink-500">
                       {i.message ?? STATUS_LABEL[i.status] ?? i.status}
                       {i.detectedLegajo ? ` · Legajo ${i.detectedLegajo}` : ""}
                       {i.detectedCuil ? ` · CUIL ${formatCuil(i.detectedCuil)}` : ""}
@@ -74,12 +74,12 @@ export default async function ImportacionesPage() {
               icon={FileDown}
             />
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-ink-100">
               {runs.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{r.sourceLabel}</p>
-                    <p className="truncate text-xs text-slate-500">
+                    <p className="truncate text-sm font-medium text-ink-800">{r.sourceLabel}</p>
+                    <p className="truncate text-xs text-ink-500">
                       {formatDateTime(r.startedAt)} · {r.company} · {r.totalFiles} archivo(s)
                     </p>
                   </div>

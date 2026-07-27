@@ -27,7 +27,7 @@ export default async function EmpresasPage({
 
       <form className="mb-4">
         <div className="relative max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
           <Input
             name="q"
             defaultValue={q ?? ""}
@@ -44,24 +44,24 @@ export default async function EmpresasPage({
           icon={Building2}
         />
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-ink-100 overflow-hidden rounded-xl border border-ink-200 bg-white">
           {companies.map((c) => (
             <li key={c.id}>
               <Link
                 href={`/estudio/empresas/${c.id}`}
-                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50"
+                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink-50"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-semibold text-brand-700">
                   {c.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-800">{c.name}</p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-sm font-semibold text-ink-800">{c.name}</p>
+                  <p className="truncate text-xs text-ink-500">
                     {c.cuit ? `${formatCuil(c.cuit)} · ` : ""}
                     {c.employeeCount} empleado(s) · {c.payslipCount} recibo(s)
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-ink-400" />
               </Link>
             </li>
           ))}

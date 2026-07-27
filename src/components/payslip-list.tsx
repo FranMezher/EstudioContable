@@ -28,22 +28,22 @@ export function PayslipList({
   }
 
   return (
-    <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <ul className="divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
       {payslips.map((p) => (
         <li
           key={p.id}
-          className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/70"
+          className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink-50/70"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
             <Receipt className="h-5 w-5" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-800">
+            <p className="text-sm font-semibold text-ink-800">
               {periodoLabel(p.periodMonth, p.periodYear)}
               {p.label ? ` · ${p.label}` : p.liqNumber ? ` · Liq. ${p.liqNumber}` : ""}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="tnum text-xs text-ink-500">
               {p.netAmount != null ? `Neto: ${formatMoney(p.netAmount)}` : "Recibo de sueldo"}
             </p>
           </div>
@@ -53,14 +53,14 @@ export function PayslipList({
               href={`/api/files/payslip/${p.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-ink-300 bg-white px-3.5 text-sm font-medium text-ink-700 shadow-xs transition-colors hover:bg-ink-50 hover:border-ink-400"
             >
               <Eye className="h-4 w-4" />
               Ver
             </a>
             <a
               href={`/api/files/payslip/${p.id}?download=1`}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-700 px-3.5 text-sm font-medium text-white hover:bg-brand-800"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-700 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-800"
             >
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline">Descargar</span>

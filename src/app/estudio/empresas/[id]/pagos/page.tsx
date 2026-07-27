@@ -29,7 +29,7 @@ export default async function PagosEstudioPage({
     <>
       <Link
         href={`/estudio/empresas/${company.id}`}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-700"
       >
         <ArrowLeft className="h-4 w-4" /> {company.name}
       </Link>

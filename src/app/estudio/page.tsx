@@ -85,11 +85,11 @@ export default async function EstudioHome() {
           ) : (
             <>
               {sinRecibos.length > 0 && (
-                <p className="mb-3 text-sm text-slate-500">
+                <p className="mb-3 text-sm text-ink-500">
                   {sinRecibos.length} empresa(s) todavía sin ningún recibo cargado.
                 </p>
               )}
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-ink-100">
                 {companies.slice(0, 8).map((c) => (
                   <li key={c.id}>
                     <Link
@@ -97,8 +97,8 @@ export default async function EstudioHome() {
                       className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800">{c.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="truncate text-sm font-medium text-ink-800">{c.name}</p>
+                        <p className="text-xs text-ink-500">
                           {c.employeeCount} empleado(s) · {c.payslipCount} recibo(s)
                         </p>
                       </div>

@@ -71,14 +71,14 @@ export function CreateEmployeeAccess({
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
+      className="w-full space-y-3 rounded-lg border border-ink-200 bg-ink-50 p-3"
     >
       <input type="hidden" name="role" value="EMPLOYEE" />
       <input type="hidden" name="employeeId" value={employeeId} />
       <input type="hidden" name="name" value={employeeName} />
 
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-800">Crear acceso para {employeeName}</p>
+        <p className="text-sm font-medium text-ink-800">Crear acceso para {employeeName}</p>
         <Button type="button" size="icon" variant="ghost" onClick={() => setOpen(false)}>
           <X className="h-4 w-4" />
         </Button>
@@ -86,7 +86,7 @@ export function CreateEmployeeAccess({
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         El empleado entra con su <strong>CUIL</strong>. Elegí una contraseña o dejala vacía para que
         se genere una automáticamente.
       </p>

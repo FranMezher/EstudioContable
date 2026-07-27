@@ -29,7 +29,7 @@ export default async function EmpresaDetallePage({
     <>
       <Link
         href="/estudio/empresas"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-700"
       >
         <ArrowLeft className="h-4 w-4" /> Empresas
       </Link>
@@ -51,7 +51,7 @@ export default async function EmpresaDetallePage({
         }
       />
 
-      <h2 className="mb-2 text-sm font-semibold text-slate-500">
+      <h2 className="mb-2 text-sm font-semibold text-ink-500">
         Empleados ({employees.length})
       </h2>
       <EmployeeList employees={employees} hrefBase="/estudio/empleados" />

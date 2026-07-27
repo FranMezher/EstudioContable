@@ -24,20 +24,20 @@ export function EmployeeList({
   }
 
   return (
-    <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <ul className="divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
       {employees.map((e) => (
         <li key={e.id}>
           <Link
             href={`${hrefBase}/${e.id}`}
-            className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50"
+            className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink-50/70"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-600 ring-1 ring-ink-200">
               {e.name.charAt(0).toUpperCase()}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800">{e.name}</p>
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-sm font-semibold text-ink-800">{e.name}</p>
+              <p className="tnum truncate text-xs text-ink-500">
                 {formatCuil(e.cuil)}
                 {e.position ? ` · ${e.position}` : ""} · {e.payslipCount} recibo(s)
                 {e.lastPeriod ? ` · último ${periodoCorto(e.lastPeriod.month, e.lastPeriod.year)}` : ""}
@@ -48,7 +48,7 @@ export function EmployeeList({
               {e.autoCreated && <Badge tone="warning">Revisar</Badge>}
               {!e.hasAccess && <Badge tone="neutral">Sin acceso</Badge>}
               {!e.isActive && <Badge tone="danger">Inactivo</Badge>}
-              <ChevronRight className="h-4 w-4 text-slate-400" />
+              <ChevronRight className="h-4 w-4 text-ink-400" />
             </div>
           </Link>
         </li>

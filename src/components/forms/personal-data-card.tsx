@@ -34,8 +34,8 @@ function SubmitBtn() {
 function Dato({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="text-sm text-slate-800">{value?.trim() ? value : "—"}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-400">{label}</p>
+      <p className="text-sm text-ink-800">{value?.trim() ? value : "—"}</p>
     </div>
   );
 }
@@ -52,7 +52,7 @@ export function PersonalDataCard({ employee }: { employee: Employee }) {
     <Card className="mb-5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <IdCard className="h-4 w-4 text-slate-400" />
+          <IdCard className="h-4 w-4 text-ink-400" />
           Datos personales
           {employee.profileCompletedAt ? (
             <Badge tone="success">Cargados por el empleado</Badge>

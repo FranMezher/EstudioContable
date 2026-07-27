@@ -67,11 +67,11 @@ export function PaymentsTable({
       <Card>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-slate-600">Año</label>
+            <label className="text-[13px] font-medium text-ink-600">Año</label>
             <select
               value={year}
               onChange={(e) => updateFilter({ year: Number(e.target.value) })}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+              className="tnum h-9 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
             >
               {(years.length ? years : [year]).map((y) => (
                 <option key={y} value={y}>
@@ -82,10 +82,10 @@ export function PaymentsTable({
 
             <button
               onClick={() => updateFilter({ months: [] })}
-              className={`rounded-full px-3 py-1 text-sm font-medium ${
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
                 selectedMonths.length === 0
-                  ? "bg-brand-700 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-brand-700 text-white shadow-sm"
+                  : "bg-ink-100 text-ink-600 hover:bg-ink-200"
               }`}
             >
               Todos
@@ -100,10 +100,10 @@ export function PaymentsTable({
                 <button
                   key={m}
                   onClick={() => toggleMonth(mes)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     active
-                      ? "bg-brand-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      ? "bg-brand-600 text-white shadow-sm"
+                      : "bg-ink-100 text-ink-600 hover:bg-ink-200"
                   }`}
                 >
                   {m.slice(0, 3)}
@@ -116,15 +116,15 @@ export function PaymentsTable({
 
       {/* Resumen + descarga */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-4 text-sm">
-          <span className="text-slate-600">
-            {data.count} recibo(s) · <strong className="text-slate-800">{data.pendientes}</strong> sin pagar
+        <div className="tnum flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <span className="text-ink-600">
+            {data.count} recibo(s) · <strong className="font-semibold text-ink-800">{data.pendientes}</strong> sin pagar
           </span>
-          <span className="text-slate-600">
-            Total a pagar: <strong className="text-slate-800">{formatMoney(data.total)}</strong>
+          <span className="text-ink-600">
+            Total a pagar: <strong className="font-semibold text-ink-800">{formatMoney(data.total)}</strong>
           </span>
           {data.totalPagado > 0 && (
-            <span className="text-emerald-700">Pagado: {formatMoney(data.totalPagado)}</span>
+            <span className="font-medium text-emerald-700">Pagado: {formatMoney(data.totalPagado)}</span>
           )}
         </div>
 
@@ -152,19 +152,19 @@ export function PaymentsTable({
           description="Probá con otro mes o cargá los recibos."
         />
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-3 font-medium">Pagado</th>
-                  <th className="px-4 py-3 font-medium">Empleado</th>
-                  <th className="px-4 py-3 font-medium">Período</th>
-                  <th className="px-4 py-3 text-right font-medium">Monto</th>
-                  <th className="px-4 py-3 text-right font-medium">Recibo</th>
+                <tr className="border-b border-ink-200 bg-ink-50/60 text-left text-[11px] uppercase tracking-wider text-ink-500">
+                  <th className="px-4 py-3 font-semibold">Pagado</th>
+                  <th className="px-4 py-3 font-semibold">Empleado</th>
+                  <th className="px-4 py-3 font-semibold">Período</th>
+                  <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                  <th className="px-4 py-3 text-right font-semibold">Recibo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-ink-100">
                 {data.items.map((row) => (
                   <PaymentRowItem key={row.id} row={row} />
                 ))}
@@ -191,26 +191,26 @@ function PaymentRowItem({ row }: { row: PaymentRow }) {
   }
 
   return (
-    <tr className={paid ? "bg-emerald-50/40" : ""}>
+    <tr className={`transition-colors ${paid ? "bg-emerald-50/50" : "hover:bg-ink-50/60"}`}>
       <td className="px-4 py-3">
         <input
           type="checkbox"
           checked={paid}
           disabled={isPending}
           onChange={toggle}
-          className="h-5 w-5 cursor-pointer rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+          className="h-5 w-5 cursor-pointer rounded border-ink-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
           aria-label={`Marcar ${row.employeeName} como pagado`}
         />
       </td>
       <td className="px-4 py-3">
-        <p className="font-medium text-slate-800">{row.employeeName}</p>
-        <p className="text-xs text-slate-500">
+        <p className="font-medium text-ink-800">{row.employeeName}</p>
+        <p className="tnum text-xs text-ink-500">
           {row.legajo ? `Leg. ${row.legajo}` : ""}
           {row.liqNumber ? `${row.legajo ? " · " : ""}Liq. ${row.liqNumber}` : ""}
         </p>
       </td>
-      <td className="px-4 py-3 text-slate-600">{periodoCorto(row.periodMonth, row.periodYear)}</td>
-      <td className="px-4 py-3 text-right font-semibold text-slate-800">
+      <td className="px-4 py-3 text-ink-600">{periodoCorto(row.periodMonth, row.periodYear)}</td>
+      <td className="tnum px-4 py-3 text-right font-semibold text-ink-800">
         {row.netAmount != null ? formatMoney(row.netAmount) : "—"}
       </td>
       <td className="px-4 py-3 text-right">

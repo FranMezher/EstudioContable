@@ -107,10 +107,10 @@ export function UsersManager({
       {panel.open && (
         <form
           action={formAction}
-          className="mb-5 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+          className="mb-5 space-y-3 rounded-xl border border-ink-200 bg-ink-50 p-4"
         >
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             El acceso de un empleado se crea desde su ficha, para que quede atado a su legajo.
           </p>
 
@@ -159,12 +159,12 @@ export function UsersManager({
         </form>
       )}
 
-      <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <ul className="divide-y divide-ink-100 overflow-hidden rounded-xl border border-ink-200 bg-white">
         {users.map((u) => (
           <li key={u.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-800">{u.name}</p>
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-sm font-medium text-ink-800">{u.name}</p>
+              <p className="truncate text-xs text-ink-500">
                 {u.email ?? formatCuil(u.cuil)}
                 {u.company ? ` · ${u.company}` : ""} ·{" "}
                 {u.lastLoginAt ? `Último ingreso ${formatDateTime(u.lastLoginAt)}` : "Nunca ingresó"}
@@ -192,7 +192,7 @@ export function UsersManager({
                   });
                 }}
               >
-                <KeyRound className="h-4 w-4 text-slate-500" />
+                <KeyRound className="h-4 w-4 text-ink-500" />
               </Button>
               <Button
                 size="icon"

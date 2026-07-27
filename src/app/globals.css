@@ -23,12 +23,28 @@
   --color-accent-600: #a35c22;
   --color-accent-700: #7f451f;
 
+  /* Neutros con un leve sesgo azul: se sienten elegidos, no genéricos */
+  --color-ink-50: #f5f7fa;
+  --color-ink-100: #eef2f7;
+  --color-ink-200: #e2e8f1;
+  --color-ink-300: #cfd8e4;
+  --color-ink-400: #97a6b8;
+  --color-ink-500: #6b7a8d;
+  --color-ink-600: #4d5b6e;
+  --color-ink-700: #364251;
+  --color-ink-800: #212c3a;
+  --color-ink-900: #141d29;
+
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+
+  /* Sombras suaves y en capas para dar profundidad sin ruido */
+  --shadow-card: 0 1px 2px rgba(20, 29, 41, 0.04), 0 8px 24px -14px rgba(20, 29, 41, 0.16);
+  --shadow-pop: 0 4px 12px -2px rgba(20, 29, 41, 0.12), 0 16px 40px -12px rgba(20, 29, 41, 0.22);
 }
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  --background: #f3f6fb;
+  --foreground: #17212e;
 }
 
 body {
@@ -36,6 +52,30 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04";
+}
+
+/* Fondo con una veladura muy sutil, para que no sea un gris plano */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(720px 420px at 100% -10%, rgba(40, 83, 138, 0.06), transparent 60%),
+    radial-gradient(560px 360px at -10% 0%, rgba(196, 118, 42, 0.05), transparent 55%);
+}
+
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-900);
+}
+
+/* Números alineados en tablas y montos */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Objetivos táctiles cómodos en el portal del empleado, que se usa del celular */
@@ -47,13 +87,14 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--color-ink-300);
   border-radius: 9999px;
+  border: 3px solid var(--background);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-ink-400);
 }

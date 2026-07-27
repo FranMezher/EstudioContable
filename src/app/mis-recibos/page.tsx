@@ -34,7 +34,7 @@ export default async function MisRecibosPage() {
         <div className="space-y-6">
           {porAnio.map((grupo) => (
             <section key={grupo.year}>
-              <h2 className="mb-2 px-1 text-sm font-semibold text-slate-500">{grupo.year}</h2>
+              <h2 className="mb-2 px-1 text-sm font-semibold text-ink-500">{grupo.year}</h2>
               <PayslipList payslips={grupo.payslips} />
             </section>
           ))}

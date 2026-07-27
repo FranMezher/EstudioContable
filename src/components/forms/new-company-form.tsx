@@ -33,10 +33,10 @@ export function NewCompanyForm() {
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="w-full space-y-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
     >
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-800">Nueva empresa</p>
+        <p className="text-sm font-semibold text-ink-800">Nueva empresa</p>
         <Button type="button" size="icon" variant="ghost" onClick={panel.hide}>
           <X className="h-4 w-4" />
         </Button>

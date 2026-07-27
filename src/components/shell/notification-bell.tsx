@@ -23,7 +23,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
         aria-label="Notificaciones"
       >
         <Bell className="h-5 w-5" />
@@ -37,9 +37,9 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <span className="text-sm font-semibold text-slate-800">Notificaciones</span>
+          <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
+              <span className="text-sm font-semibold text-ink-800">Notificaciones</span>
               {unread > 0 && (
                 <button
                   disabled={isPending}
@@ -52,7 +52,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
             </div>
             <div className="max-h-80 overflow-y-auto">
               {items.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-slate-400">
+                <p className="px-4 py-8 text-center text-sm text-ink-400">
                   No tenés notificaciones
                 </p>
               ) : (
@@ -60,7 +60,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
                   <div
                     key={n.id}
                     className={cn(
-                      "border-b border-slate-50 px-4 py-3 last:border-0",
+                      "border-b border-ink-50 px-4 py-3 last:border-0",
                       !n.isRead && "bg-brand-50/50"
                     )}
                   >
@@ -69,9 +69,9 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
                         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
                       )}
                       <div className={cn(!n.isRead ? "" : "pl-4")}>
-                        <p className="text-sm font-medium text-slate-800">{n.title}</p>
-                        <p className="text-sm text-slate-500">{n.message}</p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="text-sm font-medium text-ink-800">{n.title}</p>
+                        <p className="text-sm text-ink-500">{n.message}</p>
+                        <p className="mt-1 text-xs text-ink-400">
                           {formatDateTime(n.createdAt)}
                         </p>
                       </div>

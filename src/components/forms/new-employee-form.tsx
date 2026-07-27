@@ -33,13 +33,13 @@ export function NewEmployeeForm({ companyId }: { companyId?: string }) {
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="w-full space-y-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
     >
       {/* El servidor valida este id contra el alcance del usuario. */}
       {companyId && <input type="hidden" name="companyId" value={companyId} />}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-800">Nuevo empleado</p>
+        <p className="text-sm font-semibold text-ink-800">Nuevo empleado</p>
         <Button type="button" size="icon" variant="ghost" onClick={panel.hide}>
           <X className="h-4 w-4" />
         </Button>

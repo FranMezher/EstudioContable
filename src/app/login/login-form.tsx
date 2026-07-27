@@ -41,7 +41,7 @@ export function LoginForm() {
           placeholder="tucorreo@ejemplo.com o 20-12345678-9"
           required
         />
-        <p className="mt-1.5 text-xs text-slate-500">
+        <p className="mt-1.5 text-xs text-ink-500">
           Si sos empleado, ingresá con tu CUIL (con o sin guiones).
         </p>
       </div>

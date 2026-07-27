@@ -32,7 +32,7 @@ export function EmployeeDetail({
     <>
       <Link
         href={backHref}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-700"
       >
         <ArrowLeft className="h-4 w-4" /> {backLabel}
       </Link>
@@ -53,8 +53,8 @@ export function EmployeeDetail({
 
       <Card className="mb-5">
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <KeyRound className="h-4 w-4 text-slate-400" />
+          <div className="flex items-center gap-2 text-sm text-ink-600">
+            <KeyRound className="h-4 w-4 text-ink-400" />
             {employee.access ? (
               <>
                 <span>Acceso al portal creado</span>
@@ -63,7 +63,7 @@ export function EmployeeDetail({
                 ) : (
                   <Badge tone="danger">Desactivado</Badge>
                 )}
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ink-400">
                   {employee.access.lastLoginAt
                     ? `Último ingreso: ${formatDateTime(employee.access.lastLoginAt)}`
                     : "Nunca ingresó"}
@@ -79,7 +79,7 @@ export function EmployeeDetail({
         </CardContent>
       </Card>
 
-      <h2 className="mb-2 text-sm font-semibold text-slate-500">
+      <h2 className="mb-2 text-sm font-semibold text-ink-500">
         Recibos ({employee.payslips.length})
       </h2>
       <PayslipList

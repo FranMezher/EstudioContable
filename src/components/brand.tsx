@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/constants";
 
 /**
- * Marca del estudio. El monograma MP en un cuadro es el ancla visual que se
- * repite en el login, la barra lateral y el favicon.
+ * Marca del estudio. El monograma MP es el ancla visual que se repite en el
+ * login, la barra lateral y el favicon.
  */
 export function BrandMark({
   size = "md",
@@ -13,14 +13,14 @@ export function BrandMark({
   className?: string;
 }) {
   const sizes = {
-    sm: "h-8 w-8 text-xs",
-    md: "h-10 w-10 text-sm",
-    lg: "h-14 w-14 text-lg",
+    sm: "h-9 w-9 text-[13px] rounded-lg",
+    md: "h-10 w-10 text-sm rounded-xl",
+    lg: "h-16 w-16 text-xl rounded-2xl",
   };
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 font-bold tracking-tight text-white",
+        "flex shrink-0 items-center justify-center border border-white/25 bg-white/10 font-bold tracking-tight text-white",
         sizes[size],
         className
       )}
@@ -47,15 +47,10 @@ export function BrandLockup({
         className={tone === "dark" ? "border-brand-200 bg-brand-700 text-white" : undefined}
       />
       <div className="min-w-0 leading-tight">
-        <p
-          className={cn(
-            "truncate text-sm font-semibold",
-            tone === "dark" ? "text-slate-800" : "text-white"
-          )}
-        >
+        <p className={cn("truncate text-sm font-semibold", tone === "dark" ? "text-ink-800" : "text-white")}>
           {BRAND.name}
         </p>
-        <p className={cn("truncate text-[11px]", tone === "dark" ? "text-slate-500" : "text-brand-200")}>
+        <p className={cn("truncate text-[11px]", tone === "dark" ? "text-ink-500" : "text-brand-200")}>
           {subtitle}
         </p>
       </div>

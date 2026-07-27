@@ -28,8 +28,7 @@ export function AppShell({
   const [isPending, startTransition] = useTransition();
 
   // La navegación se arma acá adentro: los iconos de Lucide son componentes y
-  // no se pueden pasar como props desde un Server Component (se romperían al
-  // serializar la frontera servidor→cliente).
+  // no se pueden pasar como props desde un Server Component.
   const nav = navFor(role);
   const subtitle = subtitleFor(role);
 
@@ -40,11 +39,13 @@ export function AppShell({
   const isActive = (href: string) =>
     href === root ? pathname === href : pathname.startsWith(href);
 
+  const initial = user.name.trim().charAt(0).toUpperCase() || "?";
+
   return (
     <div className="min-h-screen lg:flex">
       {showSidebar && mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-ink-900/45 backdrop-blur-[1px] lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -52,7 +53,7 @@ export function AppShell({
       {showSidebar && (
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-64 transform bg-brand-800 transition-transform lg:static lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col bg-gradient-to-b from-brand-800 to-brand-900 transition-transform lg:static lg:translate-x-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -60,39 +61,54 @@ export function AppShell({
             <BrandMark size="sm" />
             <div className="min-w-0 leading-tight">
               <p className="truncate text-sm font-semibold text-white">{BRAND.name}</p>
-              <p className="truncate text-[11px] text-brand-200">{subtitle}</p>
+              <p className="truncate text-[11px] tracking-wide text-brand-200">{subtitle}</p>
             </div>
           </div>
 
-          <nav className="space-y-1 p-3">
+          <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
             {nav.map((item) => {
               const Icon = item.icon;
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive(item.href)
-                      ? "bg-white/15 text-white"
-                      : "text-brand-100 hover:bg-white/10 hover:text-white"
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-white/12 text-white"
+                      : "text-brand-100/90 hover:bg-white/8 hover:text-white"
                   )}
                 >
-                  <Icon className="h-[18px] w-[18px]" />
+                  {active && (
+                    <span className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-accent-400" />
+                  )}
+                  <Icon
+                    className={cn(
+                      "h-[18px] w-[18px] transition-colors",
+                      active ? "text-white" : "text-brand-200 group-hover:text-white"
+                    )}
+                  />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
+
+          <div className="border-t border-white/10 px-5 py-3">
+            <p className="truncate text-xs font-medium text-white">{user.name}</p>
+            <p className="truncate text-[11px] text-brand-200">{user.detail}</p>
+          </div>
         </aside>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 lg:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-ink-200/70 bg-white/85 px-4 backdrop-blur-md lg:px-6">
           {showSidebar ? (
             <button
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100 lg:hidden"
               onClick={() => setMobileOpen((v) => !v)}
               aria-label="Menú"
             >
@@ -102,22 +118,28 @@ export function AppShell({
             <div className="flex items-center gap-3">
               <BrandMark size="sm" className="border-brand-200 bg-brand-700" />
               <div className="leading-tight">
-                <p className="text-sm font-semibold text-slate-800">{BRAND.name}</p>
-                <p className="text-[11px] text-slate-500">{subtitle}</p>
+                <p className="text-sm font-semibold text-ink-800">{BRAND.name}</p>
+                <p className="text-[11px] text-ink-500">{subtitle}</p>
               </div>
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2.5">
             <NotificationBell items={notifications} />
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium text-slate-800">{user.name}</p>
-              <p className="text-xs text-slate-500">{user.detail}</p>
+              <p className="text-sm font-medium leading-tight text-ink-800">{user.name}</p>
+              <p className="text-xs text-ink-500">{user.detail}</p>
+            </div>
+            <div
+              className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 ring-1 ring-brand-200 sm:flex"
+              aria-hidden
+            >
+              {initial}
             </div>
             <button
               disabled={isPending}
               onClick={() => startTransition(() => doLogout())}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-ink-200 px-3 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-800 disabled:opacity-50"
             >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Salir</span>
@@ -125,7 +147,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-4 lg:p-8">
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
