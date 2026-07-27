@@ -18,6 +18,7 @@
     "blob:huerfanos:confirmar": "tsx scripts/limpiar-huerfanos.ts --confirmar",
     "import:recibos": "tsx scripts/import-payslips.ts",
     "import:recibos:confirmar": "tsx scripts/import-payslips.ts --confirmar",
+    "importador": "tsx scripts/menu-importador.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -136,6 +136,54 @@ re-corre.
 | `--empresa "Acme SRL"` | Solo los de esa empresa |
 | `--carpeta D:\Otra\Ruta` | Usa esa carpeta en vez de `RECIBOS_ROOT` |
 
+## El menú (doble clic) — una carpeta por empresa
+
+Cada empresa guarda sus recibos en su propia carpeta (ej.
+`C:\EstudioContable\szeitaku`). En vez de escribir la ruta a mano, hay un **menú**
+que se abre con doble clic y lista todas las empresas para elegir cuál importar.
+
+**Puesta a punto (una sola vez):**
+
+1. Copiá el ejemplo y completá tus empresas con sus carpetas:
+   ```bash
+   copy scripts\importador.config.example.json scripts\importador.config.json
+   ```
+   ```json
+   {
+     "empresas": [
+       { "nombre": "ZEITAKU S.A.", "carpeta": "C:\\EstudioContable\\szeitaku" },
+       { "nombre": "ALFONSO FLORENTIN IRMA", "carpeta": "C:\\EstudioContable\\salfonso" }
+     ]
+   }
+   ```
+   (Este archivo queda fuera del repo: es propio de tu PC.)
+
+**Para usarlo:** doble clic en **`Importar recibos.cmd`** (en la carpeta del
+proyecto). Se abre una ventana con el menú:
+
+```
+  MEZHER PAMPIN · Importador de recibos
+
+  Empresas:
+    1)  ●  ZEITAKU S.A.
+        C:\EstudioContable\szeitaku
+    2)  ●  ALFONSO FLORENTIN IRMA
+        C:\EstudioContable\salfonso
+
+    T)  Importar TODAS las empresas
+    S)  Simular (ver qué haría, sin cargar nada)
+    Q)  Salir
+```
+
+- El **●** verde indica que la carpeta existe; el **○** rojo, que no la encontró.
+- Elegí el número de una empresa para importarla, **T** para todas, o **S** para
+  simular sin cargar nada.
+- Antes de importar de verdad, pide confirmación.
+
+> Es el mismo importador de siempre por debajo, con todas sus protecciones
+> (no duplica, no da de alta empresas ni empleados). El menú solo evita tener
+> que escribir rutas.
+
 ## Automatizarlo (correr todos los días a una hora fija)
 
 El script es **idempotente**: cada archivo se identifica por su SHA-256 y una
