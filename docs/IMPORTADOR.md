@@ -136,7 +136,24 @@ re-corre.
 | `--empresa "Acme SRL"` | Solo los de esa empresa |
 | `--carpeta D:\Otra\Ruta` | Usa esa carpeta en vez de `RECIBOS_ROOT` |
 
-## El menú (doble clic) — una carpeta por empresa
+## El panel visual (doble clic) — la forma más fácil
+
+Si preferís **botones en vez de la consola**, hay un panel que se abre en el
+navegador. Doble clic en **`Panel de importacion.cmd`** y se abre solo una página
+(local, en tu PC) con:
+
+- **Una tarjeta por empresa**, con un botón **Importar** y uno **Simular**, y un
+  puntito verde/rojo según si encontró la carpeta.
+- Un botón **Importar TODAS**.
+- El **resultado en vivo** abajo, mientras corre.
+- Un formulario **Agregar empresa** (nombre + carpeta): así cargás las empresas
+  **sin editar ningún archivo**. También podés quitarlas con la ✕.
+
+Es la opción recomendada para el día a día. Dejá abierta la ventanita negra
+mientras lo usás; al cerrarla, se apaga el panel. Por debajo es el mismo
+importador de siempre.
+
+## El menú de consola (doble clic) — una carpeta por empresa
 
 Cada empresa guarda sus recibos en su propia carpeta (ej.
 `C:\EstudioContable\szeitaku`). En vez de escribir la ruta a mano, hay un **menú**

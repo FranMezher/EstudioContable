@@ -19,6 +19,7 @@
     "import:recibos": "tsx scripts/import-payslips.ts",
     "import:recibos:confirmar": "tsx scripts/import-payslips.ts --confirmar",
     "importador": "tsx scripts/menu-importador.ts",
+    "panel": "tsx scripts/panel-importador.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
