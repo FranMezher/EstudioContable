@@ -24,6 +24,8 @@ export type PayslipDTO = {
   fileSize: number | null;
   netAmount: number | null;
   source: "MANUAL" | "IMPORT" | "API";
+  signed: boolean;
+  signedAt: string | null;
   createdAt: string;
 };
 
@@ -60,6 +62,7 @@ function toPayslipDTO(p: {
   netAmount: unknown;
   source: "MANUAL" | "IMPORT" | "API";
   createdAt: Date;
+  signature?: { signedAt: Date } | null;
 }): PayslipDTO {
   return {
     id: p.id,
@@ -71,9 +74,14 @@ function toPayslipDTO(p: {
     fileSize: p.fileSize,
     netAmount: p.netAmount ? Number(p.netAmount) : null,
     source: p.source,
+    signed: !!p.signature,
+    signedAt: p.signature ? p.signature.signedAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
   };
 }
+
+/** Include estándar para traer el estado de firma junto al recibo. */
+const withSignature = { signature: { select: { signedAt: true } } } as const;
 
 // ---------------------------------------------------------------------------
 // EMPRESAS
@@ -174,6 +182,7 @@ export async function getEmployeeDetail(scope: Scope, employeeId: string) {
   const payslips = await prisma.payslip.findMany({
     where: scoped(payslipWhere(scope), { employeeId }),
     orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+    include: withSignature,
   });
 
   return {
@@ -208,6 +217,7 @@ export async function getMyPayslips(scope: Scope) {
   const rows = await prisma.payslip.findMany({
     where: payslipWhere(scope),
     orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+    include: withSignature,
   });
 
   const porAnio = new Map<number, PayslipDTO[]>();

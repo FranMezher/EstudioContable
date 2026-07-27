@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { deleteFile, payslipPath, uploadPayslipFile } from "@/lib/blob";
+import { deleteFile, payslipPath, readPrivateFile, uploadPayslipFile } from "@/lib/blob";
 import { notifyUsers } from "@/lib/notifications";
 import { normalizeCuil, isValidCuil, periodoLabel } from "@/lib/constants";
+import { CONSENT_VERSION, textoConformidad } from "@/lib/firma";
 import {
   ServiceError,
   assertCanWrite,
@@ -346,8 +347,128 @@ export async function notifyPayslip(employeeId: string, month: number, year: num
 export async function svcDeletePayslip(actor: Actor, payslipId: string) {
   assertCanWrite(actor.scope);
   const payslip = await findPayslipInScope(actor.scope, payslipId);
+
+  // No se puede borrar un recibo firmado: destruiría la evidencia legal.
+  const firmado = await prisma.payslipSignature.findUnique({
+    where: { payslipId: payslip.id },
+    select: { id: true },
+  });
+  if (firmado) {
+    throw new ServiceError("No se puede eliminar un recibo que el empleado ya firmó.", 409);
+  }
+
   await prisma.payslip.delete({ where: { id: payslip.id } });
   await deleteFile(payslip.filePath);
+}
+
+// ---------------------------------------------------------------------------
+// FIRMA ELECTRÓNICA
+// ---------------------------------------------------------------------------
+
+/**
+ * El empleado firma electrónicamente su recibo. Guarda un registro inmutable
+ * de evidencia (identidad, hash del documento, consentimiento, IP, dispositivo).
+ * Es firma electrónica (art. 5 Ley 25.506), no firma digital con certificado.
+ */
+export async function svcSignPayslip(
+  userId: string,
+  payslipId: string,
+  password: string,
+  ctx: { ip?: string | null; userAgent?: string | null }
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { employee: { include: { company: true } } },
+  });
+  if (user?.role !== "EMPLOYEE" || !user.employee) {
+    throw new ServiceError("Solo el empleado puede firmar su recibo.", 403);
+  }
+
+  // El recibo tiene que ser suyo.
+  const payslip = await prisma.payslip.findFirst({
+    where: { id: payslipId, employeeId: user.employee.id },
+  });
+  if (!payslip) throw new ServiceError("No encontrado", 404);
+
+  // Re-autenticación: refuerza el no repudio.
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) throw new ServiceError("La contraseña no es correcta.", 401);
+
+  // Ya firmado → no se firma dos veces.
+  const yaFirmado = await prisma.payslipSignature.findUnique({
+    where: { payslipId: payslip.id },
+    select: { id: true },
+  });
+  if (yaFirmado) throw new ServiceError("Este recibo ya está firmado.", 409);
+
+  // Integridad: hash del PDF exacto que se está firmando.
+  const file = await readPrivateFile(payslip.filePath);
+  if (!file || file.statusCode !== 200 || !file.stream) {
+    throw new ServiceError("No se pudo leer el archivo del recibo para firmarlo.", 502);
+  }
+  const bytes = Buffer.from(await new Response(file.stream).arrayBuffer());
+  const documentHash = crypto.createHash("sha256").update(bytes).digest("hex");
+
+  const emp = user.employee;
+  const consentText = textoConformidad({
+    nombre: emp.name,
+    cuil: emp.cuil,
+    empresa: emp.company.name,
+    periodMonth: payslip.periodMonth,
+    periodYear: payslip.periodYear,
+    documentHash,
+  });
+
+  const evidencia = {
+    payslipId: payslip.id,
+    employeeId: emp.id,
+    signedByUserId: user.id,
+    signerName: emp.name,
+    signerCuil: emp.cuil,
+    companyName: emp.company.name,
+    companyCuit: emp.company.cuit,
+    fileName: payslip.fileName,
+    periodMonth: payslip.periodMonth,
+    periodYear: payslip.periodYear,
+    netAmount: payslip.netAmount ?? undefined,
+    documentHash,
+    consentText,
+    consentVersion: CONSENT_VERSION,
+    signedAt: new Date(),
+    ip: ctx.ip ?? null,
+    userAgent: ctx.userAgent?.slice(0, 400) ?? null,
+    authMethod: "password_reauth",
+  };
+
+  // Huella de todo el registro: detecta si alguien edita la fila a mano.
+  const recordHash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ ...evidencia, netAmount: evidencia.netAmount?.toString() ?? null }))
+    .digest("hex");
+
+  const firma = await prisma.payslipSignature.create({
+    data: { ...evidencia, recordHash },
+  });
+
+  // Aviso a los admin de la empresa y del estudio.
+  const admins = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      OR: [{ role: "STUDIO_ADMIN" }, { role: "COMPANY_ADMIN", companyId: emp.companyId }],
+    },
+    select: { id: true },
+  });
+  await notifyUsers(
+    admins.map((a) => a.id),
+    {
+      type: "PAYSLIP",
+      title: "Recibo firmado",
+      message: `${emp.name} firmó su recibo de ${periodoLabel(payslip.periodMonth, payslip.periodYear)}.`,
+      link: `/estudio/empleados/${emp.id}`,
+    }
+  );
+
+  return firma;
 }
 
 /** El admin tilda un recibo como pagado (o lo destilda). */

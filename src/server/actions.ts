@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { getSessionScope } from "@/server/access";
 import { ServiceError } from "@/server/scope";
 import {
@@ -16,6 +17,7 @@ import {
   svcChangeOwnPassword,
   svcCompleteMyProfile,
   svcSetPayslipPaid,
+  svcSignPayslip,
 } from "@/server/services";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -204,6 +206,29 @@ export async function setPayslipPaid(payslipId: string, paid: boolean): Promise<
     return { ok: true };
   } catch (e) {
     return fail(e, "No se pudo actualizar el estado de pago");
+  }
+}
+
+/** El empleado firma electrónicamente su recibo (re-ingresando la contraseña). */
+export async function signPayslip(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const { userId } = await getSessionScope();
+    const h = await headers();
+    // En Vercel el IP del cliente llega en x-forwarded-for (el primero de la lista).
+    const ip = (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim() || null;
+    const userAgent = h.get("user-agent");
+
+    if (!str(formData, "acepta")) {
+      return { error: "Tenés que aceptar la declaración para poder firmar." };
+    }
+    await svcSignPayslip(userId, str(formData, "payslipId"), str(formData, "password"), {
+      ip,
+      userAgent,
+    });
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo firmar el recibo");
   }
 }
 
