@@ -182,16 +182,34 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  const url = `http://127.0.0.1:${PORT}`;
-  console.log(`\n  Panel de importación abierto en:  ${url}`);
-  console.log("  (Dejá esta ventana abierta mientras lo usás. Cerrala para terminar.)\n");
-  // Abre el navegador solo.
+const URL_PANEL = `http://127.0.0.1:${PORT}`;
+
+function abrirNavegador() {
   try {
-    spawn("cmd", ["/c", "start", "", url], { stdio: "ignore" });
+    spawn("cmd", ["/c", "start", "", URL_PANEL], { stdio: "ignore" });
   } catch {
-    /* si no abre solo, el usuario copia la URL */
+    /* si no abre solo, el usuario copia la URL a mano */
   }
+}
+
+// Si el puerto ya está ocupado, es que el panel ya estaba abierto: en vez de
+// romper con un error feo, lo reusamos abriendo el navegador y salimos.
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.log(`\n  El panel ya estaba abierto. Te llevo a él:  ${URL_PANEL}`);
+    console.log("  (Podés cerrar esta ventana.)\n");
+    abrirNavegador();
+    setTimeout(() => process.exit(0), 400);
+  } else {
+    console.error(`\n  No se pudo iniciar el panel: ${err.message}\n`);
+    process.exit(1);
+  }
+});
+
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`\n  Panel de importación abierto en:  ${URL_PANEL}`);
+  console.log("  (Dejá esta ventana abierta mientras lo usás. Cerrala para terminar.)\n");
+  abrirNavegador();
 });
 
 // ---------------------------------------------------------------------------
