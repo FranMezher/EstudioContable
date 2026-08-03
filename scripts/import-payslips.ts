@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { detectPayslip } from "./lib/parse-payslip";
+import { resolveFolder } from "./lib/resolve-folder";
 
 /**
  * ---------------------------------------------------------------------------
@@ -168,7 +169,7 @@ async function main() {
     );
   }
 
-  const root = path.resolve(args.root);
+  const root = resolveFolder(path.resolve(args.root));
   const config = await loadConfig();
 
   // En simulación no se sube nada, así que no se necesita API: sirve para

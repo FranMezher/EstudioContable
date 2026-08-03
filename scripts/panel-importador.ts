@@ -4,6 +4,7 @@ import path from "node:path";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import readline from "node:readline";
+import { resolveFolder } from "./lib/resolve-folder";
 
 /**
  * ---------------------------------------------------------------------------
@@ -95,7 +96,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
   // --- lista de empresas (con si la carpeta existe) ---
   if (req.method === "GET" && url.pathname === "/api/empresas") {
     const cfg = loadConfig();
-    const lista = cfg.empresas.map((e) => ({ ...e, existe: fs.existsSync(e.carpeta) }));
+    const lista = cfg.empresas.map((e) => ({ ...e, existe: fs.existsSync(resolveFolder(e.carpeta)) }));
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(lista));
     return;
@@ -154,11 +155,13 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     (async () => {
       for (const e of objetivos) {
         send(`\u25B6 ${e.nombre}`);
-        if (!fs.existsSync(e.carpeta)) {
+        const carpeta = resolveFolder(e.carpeta);
+        if (!fs.existsSync(carpeta)) {
           send(`  ✗ Carpeta no encontrada: ${e.carpeta}`);
           continue;
         }
-        await correr(e.carpeta, modo, send);
+        if (carpeta !== e.carpeta) send(`  (usando ${carpeta})`);
+        await correr(carpeta, modo, send);
         send("");
       }
       res.write(`event: done\ndata: ${JSON.stringify(modo ? "real" : "sim")}\n\n`);
