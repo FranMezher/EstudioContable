@@ -1,0 +1,64 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# claude code local settings
+.claude/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# mapa carpeta -> empresa del importador (es específico de cada instalación)
+/scripts/import.config.json
+
+# Recibos de sueldo: contienen datos personales reales, nunca van al repo
+*.pdf
+*.PDF
+*.zip
+/ejemplos-recibos/
+
+# registros del importador
+/logs/
+
+# mockups originales del logo (pesados, no van al repo)
+/Favicon.png
+/Favicon1.png
+/scripts/importador.config.json

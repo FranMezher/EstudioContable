@@ -1,0 +1,11 @@
+{
+  "_comentario": [
+    "Copiá este archivo como scripts/importador.config.json y completá tus empresas.",
+    "Cada empresa: 'nombre' (para mostrar en el menú) y 'carpeta' (ruta local de sus recibos).",
+    "Poné la ruta completa, con doble barra invertida."
+  ],
+  "empresas": [
+    { "nombre": "ZEITAKU S.A.", "carpeta": "C:\\EstudioContable\\szeitaku" },
+    { "nombre": "ALFONSO FLORENTIN IRMA", "carpeta": "C:\\EstudioContable\\salfonso" }
+  ]
+}

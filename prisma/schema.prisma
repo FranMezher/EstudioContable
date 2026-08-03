@@ -1,0 +1,327 @@
+// Estudio Mezher Pampin - Recibos de Sueldo
+// Modelo de datos
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Los tres niveles de acceso. El alcance de cada consulta se deriva de acá
+/// (ver src/server/scope.ts): estudio ve todo, empresa ve la suya, empleado
+/// ve únicamente sus propios recibos.
+enum Role {
+  STUDIO_ADMIN
+  COMPANY_ADMIN
+  EMPLOYEE
+}
+
+/// De dónde salió un recibo.
+enum PayslipSource {
+  MANUAL // cargado a mano desde el panel
+  IMPORT // tomado de la carpeta mensual por el importador
+  API // subido por una integración vía /api/v1
+}
+
+enum NotificationType {
+  PAYSLIP
+  IMPORT
+  GENERAL
+}
+
+/// Resultado de procesar un archivo durante una importación.
+enum ImportItemStatus {
+  OK
+  DUPLICADO
+  SIN_EMPLEADO
+  SIN_EMPRESA
+  SIN_PERIODO
+  ERROR
+}
+
+// ---------------------------------------------------------------------------
+// EMPRESAS Y PERSONAS
+// ---------------------------------------------------------------------------
+
+/// Empresa cliente del estudio.
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  cuit      String?  @unique
+  email     String?
+  phone     String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  employees  Employee[]
+  apiKeys    ApiKey[]
+  importRuns ImportRun[]
+
+  @@index([name])
+}
+
+/// Empleado de una empresa. El CUIL es la clave con la que el importador
+/// asigna cada archivo, por eso es obligatorio y único dentro de la empresa.
+model Employee {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Nombre completo para mostrar. Se arma de firstName + lastName cuando están.
+  name      String
+  cuil      String // solo dígitos, normalizado
+  position  String?
+  isActive  Boolean  @default(true)
+
+  // --- Datos personales ---
+  // Los carga el empleado una sola vez en su primer ingreso, o el admin.
+  // Después el empleado no puede modificarlos: solo el admin.
+  firstName String? // Nombre/s
+  lastName  String? // Apellido
+  legajo    String? // Número de legajo (identifica el recibo en el archivo)
+  dni       String? // solo dígitos
+  address   String?
+  /// Marca que el empleado completó su perfil. Null = todavía pendiente.
+  profileCompletedAt DateTime?
+
+  /// Creado automáticamente por el importador: el estudio lo tiene que revisar.
+  autoCreated Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payslips    Payslip[]
+  user        User?
+  importItems ImportItem[]
+  signatures  PayslipSignature[]
+
+  @@unique([companyId, cuil])
+  @@unique([companyId, legajo])
+  @@index([companyId, name])
+}
+
+/// Usuario del sistema. Los admins entran con email; los empleados con CUIL.
+model User {
+  id           String  @id @default(cuid())
+  email        String? @unique // admins del estudio y de empresa
+  cuil         String? @unique // empleados (solo dígitos)
+  passwordHash String
+  name         String
+  role         Role
+
+  /// Requerido salvo para STUDIO_ADMIN.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Requerido si role = EMPLOYEE. Único: un usuario ↔ un empleado, sin
+  /// ambigüedad posible sobre cuáles son "sus" recibos.
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  mustChangePassword Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  notifications Notification[]
+
+  @@index([companyId])
+}
+
+// ---------------------------------------------------------------------------
+// RECIBOS
+// ---------------------------------------------------------------------------
+
+/// Recibo de sueldo de un empleado para un período.
+/// Un empleado puede tener VARIOS recibos en el mismo mes (sueldo, SAC,
+/// bonos, etc.), cada uno con su número de liquidación.
+model Payslip {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodMonth Int // 1-12
+  periodYear  Int
+
+  /// Número de liquidación (ej: 1207). Distingue recibos del mismo mes.
+  liqNumber String?
+  /// Etiqueta corta para diferenciar en la UI cuando hay varios en el mes.
+  label     String?
+
+  /// Pathname del archivo en Vercel Blob PRIVADO. No es una URL pública:
+  /// solo se puede leer a través de /api/files/payslip/[id], que valida sesión.
+  filePath String
+  fileName String
+  fileSize Int?
+
+  netAmount Decimal? @db.Decimal(14, 2)
+
+  /// Marca de pago: el admin lo tilda cuando ya le pagó al empleado.
+  paidAt   DateTime?
+  paidById String?
+
+  /// SHA-256 del archivo original. Le da idempotencia al importador.
+  sourceHash String?
+  source     PayslipSource @default(MANUAL)
+
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  importItems ImportItem[]
+  signature   PayslipSignature?
+
+  // Idempotencia del importador: un mismo legajo no puede tener dos veces la
+  // misma liquidación. liqNumber null (carga manual) no participa del unique,
+  // así que la carga manual admite varios por mes sin restricción.
+  @@unique([employeeId, liqNumber])
+  @@index([employeeId, periodYear, periodMonth])
+  @@index([sourceHash])
+}
+
+/// Firma electrónica de un recibo por el empleado (Ley 25.506, art. 5).
+/// Es un registro INMUTABLE de evidencia: se crea una vez y no se edita.
+/// Su valor legal está en la trazabilidad completa que guarda.
+model PayslipSignature {
+  id             String   @id @default(cuid())
+  payslipId      String   @unique
+  payslip        Payslip  @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  signedByUserId String
+
+  // Snapshot de identidad y documento (evidencia congelada al momento de firmar)
+  signerName  String
+  signerCuil  String
+  companyName String
+  companyCuit String?
+  fileName    String
+  periodMonth Int
+  periodYear  Int
+  netAmount   Decimal? @db.Decimal(14, 2)
+
+  /// SHA-256 del PDF exacto que se firmó (integridad del documento).
+  documentHash String
+
+  /// Texto de conformidad que aceptó, y su versión (por si cambia la redacción).
+  consentText    String
+  consentVersion String
+
+  // Trazabilidad
+  signedAt   DateTime @default(now())
+  ip         String?
+  userAgent  String?
+  authMethod String // "password_reauth"
+
+  /// SHA-256 de todos los campos anteriores: detecta manipulación de la fila.
+  recordHash String
+
+  @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// IMPORTACIONES
+// ---------------------------------------------------------------------------
+
+/// Una corrida del importador sobre la carpeta mensual.
+model ImportRun {
+  id        String   @id @default(cuid())
+  /// Null si la corrida abarcó varias empresas.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  sourceLabel String // ruta o etiqueta de la carpeta procesada
+  isDryRun    Boolean @default(false)
+
+  totalFiles   Int @default(0)
+  createdCount Int @default(0)
+  skippedCount Int @default(0)
+  errorCount   Int @default(0)
+
+  startedById String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  items ImportItem[]
+
+  @@index([startedAt])
+}
+
+/// Un archivo dentro de una corrida, con qué se hizo con él y por qué.
+model ImportItem {
+  id    String    @id @default(cuid())
+  runId String
+  run   ImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  fileName String
+  status   ImportItemStatus
+  /// Motivo legible cuando no se pudo asignar.
+  message  String?
+
+  /// Lo que se pudo extraer del archivo, aunque no haya alcanzado para asignarlo.
+  detectedCuil    String?
+  detectedLegajo  String?
+  detectedCompany String?
+  periodMonth     Int?
+  periodYear      Int?
+
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  payslipId  String?
+  payslip    Payslip?  @relation(fields: [payslipId], references: [id], onDelete: SetNull)
+
+  /// Queda pendiente hasta que un admin lo resuelve o lo descarta.
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([runId, status])
+  @@index([status, resolvedAt])
+}
+
+// ---------------------------------------------------------------------------
+// SOPORTE
+// ---------------------------------------------------------------------------
+
+/// API keys para el importador y otras integraciones.
+model ApiKey {
+  id      String @id @default(cuid())
+  name    String
+  prefix  String
+  keyHash String @unique
+
+  /// null = acceso total (estudio); con valor = limitada a esa empresa.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdById String
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+/// Notificaciones in-app.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+/// Configuración global.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

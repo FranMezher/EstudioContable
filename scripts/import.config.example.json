@@ -1,0 +1,13 @@
+{
+  "_comentario": [
+    "Copiá este archivo como scripts/import.config.json y completá el mapa.",
+    "La clave es el nombre de la carpeta tal cual está en el disco, en minúsculas.",
+    "El valor es el CUIT de la empresa (sin guiones) o su id interno.",
+    "El id de una empresa se ve en la URL del panel: /estudio/empresas/<id>."
+  ],
+  "companies": {
+    "acme srl": "30707429561",
+    "acme": "30707429561",
+    "norte distribuciones": "30658472115"
+  }
+}
