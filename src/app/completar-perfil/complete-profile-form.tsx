@@ -58,8 +58,8 @@ export function CompleteProfileForm() {
       </div>
 
       <div>
-        <Label htmlFor="address">Dirección</Label>
-        <Input id="address" name="address" autoComplete="street-address" placeholder="Calle 123, Ciudad" />
+        <Label htmlFor="address">Domicilio</Label>
+        <Input id="address" name="address" autoComplete="street-address" placeholder="Calle 123, Ciudad" required />
       </div>
 
       <SubmitButton />

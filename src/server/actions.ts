@@ -141,7 +141,7 @@ export async function completeMyProfile(
       lastName: str(formData, "lastName"),
       dni: str(formData, "dni"),
       legajo: str(formData, "legajo") || null,
-      address: str(formData, "address") || null,
+      address: str(formData, "address"),
     });
     revalidateAll();
     return { ok: true };

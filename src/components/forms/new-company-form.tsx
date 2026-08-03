@@ -51,14 +51,14 @@ export function NewCompanyForm() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <Label htmlFor="company-cuit">CUIT</Label>
-          <Input id="company-cuit" name="cuit" placeholder="30-12345678-9" />
+          <Input id="company-cuit" name="cuit" placeholder="30-12345678-9" required />
         </div>
         <div>
-          <Label htmlFor="company-email">Email</Label>
+          <Label htmlFor="company-email">Email (opcional)</Label>
           <Input id="company-email" name="email" type="email" />
         </div>
         <div>
-          <Label htmlFor="company-phone">Teléfono</Label>
+          <Label htmlFor="company-phone">Teléfono (opcional)</Label>
           <Input id="company-phone" name="phone" />
         </div>
       </div>

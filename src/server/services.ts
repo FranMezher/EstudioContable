@@ -67,12 +67,11 @@ export async function svcCreateCompany(
   const name = input.name?.trim();
   if (!name) throw new ServiceError("Indicá el nombre de la empresa");
 
-  const cuit = input.cuit ? normalizeCuil(input.cuit) : null;
-  if (cuit && !isValidCuil(cuit)) throw new ServiceError("El CUIT no es válido");
-  if (cuit) {
-    const dup = await prisma.company.findUnique({ where: { cuit }, select: { id: true } });
-    if (dup) throw new ServiceError("Ya existe una empresa con ese CUIT");
-  }
+  const cuit = normalizeCuil(input.cuit ?? "");
+  if (!cuit) throw new ServiceError("Indicá el CUIT de la empresa");
+  if (!isValidCuil(cuit)) throw new ServiceError("El CUIT no es válido");
+  const dup = await prisma.company.findUnique({ where: { cuit }, select: { id: true } });
+  if (dup) throw new ServiceError("Ya existe una empresa con ese CUIT");
 
   return prisma.company.create({
     data: { name, cuit, email: input.email?.trim() || null, phone: input.phone?.trim() || null },
@@ -219,8 +218,10 @@ export async function svcCompleteMyProfile(
   const firstName = input.firstName?.trim();
   const lastName = input.lastName?.trim();
   const dni = normalizeCuil(input.dni);
+  const address = input.address?.trim();
   if (!firstName || !lastName) throw new ServiceError("Completá nombre y apellido");
   if (dni.length < 7) throw new ServiceError("El DNI no parece válido");
+  if (!address) throw new ServiceError("Completá tu domicilio");
 
   const legajo = input.legajo?.trim() || null;
   if (legajo) await assertLegajoLibre(user.employee.companyId, legajo, user.employee.id);
@@ -232,7 +233,7 @@ export async function svcCompleteMyProfile(
       lastName,
       dni,
       legajo,
-      address: input.address?.trim() || null,
+      address,
       name: displayName(lastName, firstName, user.employee.name),
       profileCompletedAt: new Date(),
     },
