@@ -22,10 +22,17 @@ import { resolveFolder } from "./lib/resolve-folder";
  *   npx tsx scripts/import-payslips.ts --confirmar    → importa de verdad
  *   npx tsx scripts/import-payslips.ts --confirmar --periodo 2026-06
  *   npx tsx scripts/import-payslips.ts --confirmar --empresa "Acme SRL"
+ *   npx tsx scripts/import-payslips.ts --confirmar --meses 3   (últimos 3 meses)
+ *   npx tsx scripts/import-payslips.ts --confirmar --todos     (sin filtro de fecha)
+ *
+ * Las carpetas de salida suelen tener años de recibos viejos. Por eso, por
+ * defecto solo se toman los PDF de los ÚLTIMOS 2 MESES (por la fecha del
+ * archivo). Se cambia con --meses N o RECIBOS_MESES; --todos lo desactiva.
  *
  * Se configura UNA sola vez en el .env de esa PC:
  *   API_KEY        (único obligatorio) key de acceso total, Configuración → API keys
  *   RECIBOS_ROOT   carpeta raíz a recorrer (o se pasa --carpeta)
+ *   RECIBOS_MESES  cuántos meses hacia atrás mirar (por defecto 2)
  *   API_URL        solo si el portal cambia de dirección (ver DEFAULT_API_URL)
  *
  * El mapa carpeta → empresa vive en scripts/import.config.json.
@@ -56,6 +63,12 @@ type Reporte = {
 
 // ---------------------------------------------------------------------------
 
+/** Meses hacia atrás para el filtro de recientes. Por defecto 2. */
+function parseMeses(raw: string | undefined): number {
+  const n = raw ? Number(raw) : 2;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 2;
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const get = (flag: string) => {
@@ -68,6 +81,9 @@ function parseArgs() {
     dryRun: !args.includes("--confirmar"),
     periodo: get("--periodo"),
     empresa: get("--empresa"),
+    // Filtro de recientes: por defecto 2 meses. --todos lo desactiva.
+    meses: parseMeses(get("--meses") ?? process.env.RECIBOS_MESES),
+    todos: args.includes("--todos"),
     root: get("--carpeta") ?? process.env.RECIBOS_ROOT,
   };
 }
@@ -91,6 +107,19 @@ async function findPdfs(dir: string): Promise<string[]> {
     else if (entry.name.toLowerCase().endsWith(".pdf")) out.push(full);
   }
   return out;
+}
+
+/**
+ * Fecha efectiva del archivo: la MÁS ANTIGUA entre creación y modificación.
+ * Copiar una carpeta a otra unidad (p. ej. al mover los datos al server)
+ * suele resetear la fecha de creación a "ahora" pero conserva la de
+ * modificación; tomar la mínima evita que, tras la copia, TODOS los PDF
+ * parezcan recientes y se cuele años de recibos viejos.
+ */
+async function fileDateMs(filePath: string): Promise<number> {
+  const st = await fs.stat(filePath);
+  const cand = [st.mtimeMs, st.birthtimeMs].filter((t) => t > 0);
+  return cand.length ? Math.min(...cand) : st.mtimeMs;
 }
 
 /** La empresa sale del nombre de alguna carpeta del camino. */
@@ -195,6 +224,25 @@ async function main() {
   console.log(`📁 Carpeta: ${root}`);
 
   let archivos = await findPdfs(root);
+
+  // Filtro de recientes: las carpetas de salida acumulan años de PDFs. Por
+  // defecto solo miramos los de los últimos meses (por fecha del archivo).
+  // --todos lo desactiva.
+  if (!args.todos) {
+    const desde = new Date();
+    desde.setMonth(desde.getMonth() - args.meses);
+    const desdeMs = desde.getTime();
+    const total = archivos.length;
+    const fechados = await Promise.all(
+      archivos.map(async (f) => ({ f, d: await fileDateMs(f) }))
+    );
+    archivos = fechados.filter((x) => x.d >= desdeMs).map((x) => x.f);
+    console.log(
+      `🗓️  Solo últimos ${args.meses} mes(es), desde ${desde.toLocaleDateString("es-AR")}. ` +
+        `Omití ${total - archivos.length} PDF más antiguos (de ${total}).`
+    );
+  }
+
   if (args.periodo) {
     archivos = archivos.filter((f) => f.toLowerCase().includes(args.periodo!.toLowerCase()));
   }

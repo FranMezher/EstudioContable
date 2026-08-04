@@ -53,11 +53,14 @@ function readBody(req: http.IncomingMessage): Promise<string> {
 function correr(
   carpeta: string,
   confirmar: boolean,
+  meses: number,
   onLine: (line: string) => void
 ): Promise<number> {
   return new Promise((resolve) => {
     const conf = confirmar ? "--confirmar" : "";
-    const cmd = `npx tsx scripts/import-payslips.ts ${conf} --carpeta "${carpeta}"`;
+    // meses > 0 → últimos N meses; 0 → todos (sin filtro de fecha).
+    const filtro = meses > 0 ? `--meses ${meses}` : "--todos";
+    const cmd = `npx tsx scripts/import-payslips.ts ${conf} ${filtro} --carpeta "${carpeta}"`;
     const hijo = spawn(cmd, { shell: true, cwd: ROOT });
     const rlOut = readline.createInterface({ input: hijo.stdout });
     const rlErr = readline.createInterface({ input: hijo.stderr });
@@ -135,6 +138,13 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method === "GET" && url.pathname === "/run") {
     const modo = url.searchParams.get("modo") === "real";
     const sel = url.searchParams.get("empresa") ?? "";
+    // Meses hacia atrás. Por defecto 2; 0 = todos (sin filtro de fecha).
+    const mesesRaw = url.searchParams.get("meses");
+    let meses = 2;
+    if (mesesRaw !== null && mesesRaw !== "") {
+      const n = Number(mesesRaw);
+      if (Number.isFinite(n) && n >= 0) meses = Math.floor(n);
+    }
     const cfg = loadConfig();
     const objetivos = sel === "all" ? cfg.empresas : [cfg.empresas[Number(sel)]].filter(Boolean);
 
@@ -161,7 +171,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
           continue;
         }
         if (carpeta !== e.carpeta) send(`  (usando ${carpeta})`);
-        await correr(carpeta, modo, send);
+        await correr(carpeta, modo, meses, send);
         send("");
       }
       res.write(`event: done\ndata: ${JSON.stringify(modo ? "real" : "sim")}\n\n`);
@@ -261,6 +271,9 @@ const PAGE = /* html */ `<!doctype html>
   .del { background:transparent; color:var(--danger); border:0; font-size:18px; padding:4px 8px; }
   button:disabled { opacity:.5; cursor:default; }
   .allrow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .mesesbox { display:flex; align-items:center; gap:6px; margin-left:auto; font-size:13px; color:var(--muted); font-weight:600; }
+  .mesesbox input { width:52px; padding:7px 8px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:13px; text-align:center; }
+  .mesesbox input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(40,83,138,.14); }
   .field { display:flex; flex-direction:column; gap:5px; }
   .field label { font-size:12px; font-weight:600; color:var(--muted); }
   .field input { padding:9px 11px; border:1px solid var(--line); border-radius:9px; font:inherit; font-size:14px; }
@@ -297,7 +310,11 @@ const PAGE = /* html */ `<!doctype html>
         <div class="allrow" style="margin-top:14px">
           <button class="accent" onclick="run('all','real')" id="btnTodas">Importar TODAS</button>
           <button class="ghost" onclick="run('all','sim')">Simular todas</button>
+          <label class="mesesbox">Solo últimos
+            <input id="meses" type="number" min="0" step="1" value="2" /> meses
+          </label>
         </div>
+        <p class="hint">Se importan solo los recibos de los <b>últimos 2 meses</b> (por la fecha del archivo), para saltear los años de recibos viejos. Poné <b>0</b> para importar todos.</p>
       </div>
     </div>
 
@@ -385,7 +402,9 @@ const PAGE = /* html */ `<!doctype html>
       : '<span class="badge sim">Simulación</span>';
     $("#consola").scrollIntoView({ behavior:"smooth" });
 
-    const ev = new EventSource("/run?empresa=" + encodeURIComponent(empresa) + "&modo=" + modo);
+    const mEl = $("#meses");
+    const meses = mEl && mEl.value !== "" ? mEl.value : "2";
+    const ev = new EventSource("/run?empresa=" + encodeURIComponent(empresa) + "&modo=" + modo + "&meses=" + encodeURIComponent(meses));
     ev.onmessage = (m) => {
       log.textContent += JSON.parse(m.data) + "\\n";
       log.scrollTop = log.scrollHeight;
