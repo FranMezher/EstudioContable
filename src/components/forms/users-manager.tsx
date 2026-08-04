@@ -76,6 +76,9 @@ export function UsersManager({
   const [error, setError] = useState<string>();
   // La contraseña del "restablecer" llega desde un handler, no desde el form.
   const [resetPassword, setResetPassword] = useState<string>();
+  // Tipo de acceso elegido: define si hay que seleccionar una empresa. El
+  // "Estudio" ve todas, así que no lleva empresa.
+  const [role, setRole] = useState<UserRow["role"]>("COMPANY_ADMIN");
 
   const password = resetPassword ?? nueva.value;
 
@@ -117,12 +120,20 @@ export function UsersManager({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="user-role">Tipo de acceso</Label>
-              <Select id="user-role" name="role" defaultValue="COMPANY_ADMIN" required>
+              <Select
+                id="user-role"
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRow["role"])}
+                required
+              >
                 <option value="COMPANY_ADMIN">Administrador de empresa</option>
-                {canCreateStudioAdmin && <option value="STUDIO_ADMIN">Estudio</option>}
+                {canCreateStudioAdmin && (
+                  <option value="STUDIO_ADMIN">Estudio (ve todas las empresas)</option>
+                )}
               </Select>
             </div>
-            {companies && companies.length > 0 && (
+            {role === "COMPANY_ADMIN" && companies && companies.length > 0 && (
               <div>
                 <Label htmlFor="user-company">Empresa</Label>
                 <Select id="user-company" name="companyId" required>
