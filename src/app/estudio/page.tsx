@@ -17,7 +17,7 @@ export default async function EstudioHome() {
     getCompanies(scope),
   ]);
 
-  const pendientes = review.pendingItems.length;
+  const pendientes = review.total;
   const sinRecibos = companies.filter((c) => c.payslipCount === 0);
 
   return (
@@ -40,30 +40,22 @@ export default async function EstudioHome() {
           }
           icon={Receipt}
         />
-        <StatCard label="Pendientes de revisión" value={pendientes} icon={AlertTriangle} />
+        {pendientes > 0 ? (
+          <Link
+            href="/estudio/importaciones"
+            className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <StatCard
+              label="Pendientes de revisión"
+              value={pendientes}
+              hint="Tocá para revisar y descartar"
+              icon={AlertTriangle}
+            />
+          </Link>
+        ) : (
+          <StatCard label="Pendientes de revisión" value={pendientes} icon={AlertTriangle} />
+        )}
       </div>
-
-      {pendientes > 0 && (
-        <Card className="mb-6 border-amber-200 bg-amber-50/50">
-          <CardHeader className="border-amber-100">
-            <CardTitle className="flex items-center gap-2 text-amber-800">
-              <AlertTriangle className="h-4 w-4" />
-              Hay {pendientes} archivo{pendientes === 1 ? "" : "s"} sin asignar
-            </CardTitle>
-            <Link
-              href="/estudio/importaciones"
-              className="text-sm font-medium text-amber-800 underline underline-offset-2"
-            >
-              Ver detalle
-            </Link>
-          </CardHeader>
-          <CardContent className="text-sm text-amber-900">
-            <p>
-              El importador no pudo cargarlos porque falta dar de alta la empresa o el empleado.
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

@@ -336,20 +336,53 @@ export async function getDashboardStats(scope: Scope) {
   return { companies, employees, payslips, lastPeriod: lastPayslip };
 }
 
+export type PendingItemDTO = {
+  id: string;
+  fileName: string;
+  status: string;
+  message: string | null;
+  detectedLegajo: string | null;
+  detectedCuil: string | null;
+  detectedCompany: string | null;
+  periodMonth: number | null;
+  periodYear: number | null;
+  sourceLabel: string | null;
+  createdAt: string;
+};
+
 /**
  * Archivos que el importador no pudo asignar y siguen sin resolver.
  * (El importador no da de alta empleados: si no existe, el archivo queda acá.)
+ * Ordenados por estado para poder agruparlos por tipo de problema.
  */
 export async function getPendingReview(scope: Scope) {
   void scope;
-  const pendingItems = await prisma.importItem.findMany({
-    where: { resolvedAt: null, status: { not: "OK" } },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: { run: { select: { sourceLabel: true, startedAt: true } } },
-  });
+  const where = { resolvedAt: null, status: { not: "OK" as const } };
+  const [rows, total] = await Promise.all([
+    prisma.importItem.findMany({
+      where,
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      take: 500,
+      include: { run: { select: { sourceLabel: true } } },
+    }),
+    prisma.importItem.count({ where }),
+  ]);
 
-  return { pendingItems };
+  const pendingItems: PendingItemDTO[] = rows.map((i) => ({
+    id: i.id,
+    fileName: i.fileName,
+    status: i.status,
+    message: i.message,
+    detectedLegajo: i.detectedLegajo,
+    detectedCuil: i.detectedCuil,
+    detectedCompany: i.detectedCompany,
+    periodMonth: i.periodMonth,
+    periodYear: i.periodYear,
+    sourceLabel: i.run?.sourceLabel ?? null,
+    createdAt: i.createdAt.toISOString(),
+  }));
+
+  return { pendingItems, total };
 }
 
 export async function getImportRuns(limit = 20) {

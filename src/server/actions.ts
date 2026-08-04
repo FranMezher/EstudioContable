@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getSessionScope } from "@/server/access";
 import { ServiceError } from "@/server/scope";
+import { svcResolvePendingItems } from "@/server/import-service";
 import {
   svcCreateCompany,
   svcCreateEmployee,
@@ -272,6 +273,24 @@ export async function setUserActive(userId: string, isActive: boolean): Promise<
     return { ok: true };
   } catch (e) {
     return fail(e, "No se pudo actualizar el acceso");
+  }
+}
+
+/**
+ * Descarta archivos "sin asignar" (uno, un grupo por tipo de error, o todos).
+ * No borra el historial: solo los saca de la lista de pendientes.
+ */
+export async function resolvePendingItems(filter: {
+  ids?: string[];
+  status?: string;
+  all?: boolean;
+}): Promise<ActionState> {
+  try {
+    await svcResolvePendingItems(await getSessionScope(), filter);
+    revalidateAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e, "No se pudo descartar");
   }
 }
 

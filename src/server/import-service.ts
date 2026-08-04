@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeCuil, isValidCuil } from "@/lib/constants";
-import { ServiceError, assertCanWrite } from "@/server/scope";
+import { ServiceError, assertCanWrite, assertStudio } from "@/server/scope";
 import { svcCreatePayslip, type Actor } from "@/server/services";
 import type { ImportItemStatus } from "@/generated/prisma/enums";
 
@@ -223,4 +223,38 @@ export async function svcFinishImportRun(
       finishedAt: new Date(),
     },
   });
+}
+
+/**
+ * Descarta ítems pendientes marcándolos como revisados (resolvedAt). No borra
+ * el historial: solo los saca de la lista de "sin asignar". Se puede descartar
+ * uno, un grupo por tipo de error, o todos.
+ */
+export async function svcResolvePendingItems(
+  actor: Actor,
+  filter: { ids?: string[]; status?: string; all?: boolean }
+): Promise<number> {
+  // Solo el estudio maneja las importaciones.
+  assertStudio(actor.scope);
+
+  const base = { resolvedAt: null };
+  let where: {
+    resolvedAt: null;
+    id?: { in: string[] };
+    status?: ImportItemStatus | { not: ImportItemStatus };
+  };
+
+  if (filter.ids && filter.ids.length > 0) {
+    where = { ...base, id: { in: filter.ids } };
+  } else if (filter.status) {
+    where = { ...base, status: filter.status as ImportItemStatus };
+  } else if (filter.all) {
+    // Todo lo pendiente (nunca lo que salió OK, que no está en la lista).
+    where = { ...base, status: { not: "OK" } };
+  } else {
+    throw new ServiceError("No hay nada para descartar");
+  }
+
+  const res = await prisma.importItem.updateMany({ where, data: { resolvedAt: new Date() } });
+  return res.count;
 }
