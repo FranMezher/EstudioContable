@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Download, Eye, Loader2 } from "lucide-react";
+import { Download, Eye, FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,6 +31,7 @@ export function PaymentsTable({
   year,
   selectedMonths,
   zipHref,
+  excelHref,
   companyId,
 }: {
   data: Summary;
@@ -39,6 +40,7 @@ export function PaymentsTable({
   /** Meses activos; vacío = todos. */
   selectedMonths: number[];
   zipHref: string;
+  excelHref: string;
   companyId?: string;
 }) {
   const router = useRouter();
@@ -129,19 +131,27 @@ export function PaymentsTable({
         </div>
 
         {data.count > 0 && (
-          <a
-            href={zipHref}
-            onClick={() => {
-              setDownloading(true);
-              // El navegador dispara la descarga; liberamos el botón enseguida.
-              setTimeout(() => setDownloading(false), 4000);
-            }}
-          >
-            <Button disabled={downloading}>
-              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Descargar todos (ZIP)
-            </Button>
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a href={excelHref}>
+              <Button variant="outline">
+                <FileDown className="h-4 w-4" />
+                Descargar Excel
+              </Button>
+            </a>
+            <a
+              href={zipHref}
+              onClick={() => {
+                setDownloading(true);
+                // El navegador dispara la descarga; liberamos el botón enseguida.
+                setTimeout(() => setDownloading(false), 4000);
+              }}
+            >
+              <Button disabled={downloading}>
+                {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Recibos (ZIP)
+              </Button>
+            </a>
+          </div>
         )}
       </div>
 

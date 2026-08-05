@@ -24,6 +24,7 @@ export default async function PagosEmpresaPage({
         year={view.year}
         selectedMonths={view.months}
         zipHref={view.zipHref}
+        excelHref={view.excelHref}
       />
     </>
   );

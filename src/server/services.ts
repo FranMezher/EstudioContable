@@ -163,6 +163,7 @@ export type BulkEmployeesResult = {
   existentes: number;
   invalidos: number;
   created: number;
+  accessCreated: number;
 };
 
 /**
@@ -174,7 +175,7 @@ export async function svcBulkCreateEmployees(
   actor: Actor,
   companyId: string,
   parsed: ParsedEmployee[],
-  opts: { create: boolean }
+  opts: { create: boolean; withAccess?: boolean }
 ): Promise<BulkEmployeesResult> {
   // Solo el estudio puede hacer carga masiva.
   assertStudio(actor.scope);
@@ -189,6 +190,7 @@ export async function svcBulkCreateEmployees(
 
   const rows: BulkEmployeeRow[] = [];
   let created = 0;
+  let accessCreated = 0;
 
   for (const p of parsed) {
     const name = p.name.replace(/\s+/g, " ").trim();
@@ -218,16 +220,35 @@ export async function svcBulkCreateEmployees(
     }
 
     if (opts.create) {
+      let emp: { id: string; name: string };
       try {
-        await prisma.employee.create({
+        emp = await prisma.employee.create({
           data: { companyId, name, cuil, legajo, dni, isActive: true },
+          select: { id: true, name: true },
         });
-        created++;
-        push("nuevo");
       } catch (e) {
         push("invalido", e instanceof Error ? e.message : "No se pudo crear");
         continue;
       }
+      created++;
+
+      let accessNote: string | undefined;
+      if (opts.withAccess) {
+        try {
+          // Acceso del empleado: entra con su CUIL y la contraseña provisoria
+          // es el mismo CUIL (se le pide cambiarla en el primer ingreso).
+          await svcCreateUser(actor, {
+            role: "EMPLOYEE",
+            employeeId: emp.id,
+            name: emp.name,
+            password: cuil,
+          });
+          accessCreated++;
+        } catch {
+          accessNote = "empleado creado; el acceso no se pudo generar";
+        }
+      }
+      push("nuevo", accessNote);
     } else {
       push("nuevo");
     }
@@ -244,6 +265,7 @@ export async function svcBulkCreateEmployees(
     existentes: rows.filter((r) => r.status === "existe").length,
     invalidos: rows.filter((r) => r.status === "invalido").length,
     created,
+    accessCreated,
   };
 }
 

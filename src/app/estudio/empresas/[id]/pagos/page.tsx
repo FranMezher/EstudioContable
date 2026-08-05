@@ -44,6 +44,7 @@ export default async function PagosEstudioPage({
         year={view.year}
         selectedMonths={view.months}
         zipHref={view.zipHref}
+        excelHref={view.excelHref}
         companyId={company.id}
       />
     </>

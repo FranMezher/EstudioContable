@@ -68,6 +68,21 @@ export function BulkEmployees({ companies }: { companies: { id: string; name: st
           </div>
         </div>
 
+        <label className="flex items-start gap-2.5 text-sm text-ink-700">
+          <input
+            type="checkbox"
+            name="withAccess"
+            value="1"
+            defaultChecked
+            className="mt-0.5 h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-2 focus:ring-brand-500/30"
+          />
+          <span>
+            Crear también el <strong>acceso al portal</strong> de cada empleado. Entra con su{" "}
+            <strong>CUIL</strong> y la contraseña provisoria es su mismo CUIL (se le pide cambiarla en
+            el primer ingreso).
+          </span>
+        </label>
+
         {state.error && (
           <div className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -103,7 +118,11 @@ export function BulkEmployees({ companies }: { companies: { id: string; name: st
                 <FileUp className="h-4 w-4 text-brand-600" />
               )}
               {state.created
-                ? `Se crearon ${r.created} empleado${r.created === 1 ? "" : "s"} en ${r.companyName}`
+                ? `Se crearon ${r.created} empleado${r.created === 1 ? "" : "s"}${
+                    r.accessCreated > 0
+                      ? ` y ${r.accessCreated} acceso${r.accessCreated === 1 ? "" : "s"}`
+                      : ""
+                  } en ${r.companyName}`
                 : `Vista previa · ${r.companyName}`}
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -150,10 +169,20 @@ export function BulkEmployees({ companies }: { companies: { id: string; name: st
           </div>
 
           {state.created && (
-            <p className="flex items-center gap-2 border-t border-ink-100 px-4 py-3 text-sm text-ink-600">
-              <Users className="h-4 w-4 text-ink-400" />
-              Ya aparecen en la ficha de {r.companyName}. Todavía sin acceso al portal: creá el acceso
-              de cada uno cuando quieras que puedan ingresar.
+            <p className="flex items-start gap-2 border-t border-ink-100 px-4 py-3 text-sm text-ink-600">
+              <Users className="mt-0.5 h-4 w-4 shrink-0 text-ink-400" />
+              {r.accessCreated > 0 ? (
+                <span>
+                  Cada uno entra con su <strong>CUIL</strong> y, por primera vez, la contraseña
+                  también es su <strong>CUIL</strong> (los 11 números, sin guiones). El sistema le
+                  pide cambiarla al ingresar. Pasales ese dato.
+                </span>
+              ) : (
+                <span>
+                  Ya aparecen en la ficha de {r.companyName}. Todavía sin acceso al portal: creá el
+                  acceso de cada uno cuando quieras que puedan ingresar.
+                </span>
+              )}
             </p>
           )}
         </div>

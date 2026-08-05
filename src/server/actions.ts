@@ -317,7 +317,8 @@ export async function bulkCreateEmployees(
     }
 
     const create = str(formData, "mode") === "create";
-    const result = await svcBulkCreateEmployees(actor, companyId, parsed, { create });
+    const withAccess = str(formData, "withAccess") === "1";
+    const result = await svcBulkCreateEmployees(actor, companyId, parsed, { create, withAccess });
     if (create) revalidateAll();
     return { result, created: create };
   } catch (e) {

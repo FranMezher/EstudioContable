@@ -22,7 +22,9 @@ export async function buildPaymentsView(
   if (companyId) params.set("companyId", companyId);
   params.set("year", String(year));
   if (months.length) params.set("months", months.join(","));
-  const zipHref = `/api/files/payslips-zip?${params.toString()}`;
+  const query = params.toString();
+  const zipHref = `/api/files/payslips-zip?${query}`;
+  const excelHref = `/api/files/pagos-excel?${query}`;
 
-  return { years, year, months, data, zipHref };
+  return { years, year, months, data, zipHref, excelHref };
 }
