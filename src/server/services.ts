@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { deleteFile, payslipPath, readPrivateFile, uploadPayslipFile } from "@/lib/blob";
 import { notifyUsers } from "@/lib/notifications";
-import { normalizeCuil, isValidCuil, periodoLabel } from "@/lib/constants";
+import { normalizeCuil, isValidCuil, formatCuil, periodoLabel } from "@/lib/constants";
+import type { ParsedEmployee } from "@/server/parse-empleados";
 import { CONSENT_VERSION, textoConformidad } from "@/lib/firma";
 import {
   ServiceError,
@@ -140,6 +141,110 @@ export async function svcCreateEmployee(actor: Actor, input: EmployeeInput, opts
       autoCreated: opts?.autoCreated ?? false,
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// ALTA MASIVA DE EMPLEADOS (desde un listado PDF / Excel / CSV)
+// ---------------------------------------------------------------------------
+
+export type BulkEmployeeRow = {
+  name: string;
+  cuil: string; // formateado 20-xxxxxxxx-x para mostrar
+  legajo: string | null;
+  dni: string | null;
+  status: "nuevo" | "existe" | "invalido";
+  reason?: string;
+};
+
+export type BulkEmployeesResult = {
+  companyName: string;
+  rows: BulkEmployeeRow[];
+  nuevos: number;
+  existentes: number;
+  invalidos: number;
+  created: number;
+};
+
+/**
+ * Da de alta empleados en lote dentro de UNA empresa (la elige el estudio).
+ * Clasifica cada fila en nuevo / ya existe / inválido. Con opts.create=false
+ * solo previsualiza (no escribe); con true crea los "nuevos".
+ */
+export async function svcBulkCreateEmployees(
+  actor: Actor,
+  companyId: string,
+  parsed: ParsedEmployee[],
+  opts: { create: boolean }
+): Promise<BulkEmployeesResult> {
+  // Solo el estudio puede hacer carga masiva.
+  assertStudio(actor.scope);
+  const company = await assertCompanyInScope(actor.scope, companyId);
+
+  const existing = await prisma.employee.findMany({
+    where: { companyId },
+    select: { cuil: true, legajo: true },
+  });
+  const cuilSet = new Set(existing.map((e) => e.cuil));
+  const legajoSet = new Set(existing.map((e) => e.legajo).filter((l): l is string => !!l));
+
+  const rows: BulkEmployeeRow[] = [];
+  let created = 0;
+
+  for (const p of parsed) {
+    const name = p.name.replace(/\s+/g, " ").trim();
+    const cuil = normalizeCuil(p.cuil);
+    const legajo = p.legajo?.trim() || null;
+    const dni = p.dni ? normalizeCuil(p.dni) || null : null;
+    const shown = cuil.length === 11 ? formatCuil(cuil) : p.cuil;
+
+    const push = (status: BulkEmployeeRow["status"], reason?: string) =>
+      rows.push({ name: name || p.name, cuil: shown, legajo, dni, status, reason });
+
+    if (!name) {
+      push("invalido", "Sin nombre");
+      continue;
+    }
+    if (!isValidCuil(cuil)) {
+      push("invalido", "CUIL inválido");
+      continue;
+    }
+    if (cuilSet.has(cuil)) {
+      push("existe", "Ya cargado");
+      continue;
+    }
+    if (legajo && legajoSet.has(legajo)) {
+      push("invalido", `Legajo ${legajo} ya usado por otro empleado`);
+      continue;
+    }
+
+    if (opts.create) {
+      try {
+        await prisma.employee.create({
+          data: { companyId, name, cuil, legajo, dni, isActive: true },
+        });
+        created++;
+        push("nuevo");
+      } catch (e) {
+        push("invalido", e instanceof Error ? e.message : "No se pudo crear");
+        continue;
+      }
+    } else {
+      push("nuevo");
+    }
+
+    // Reservado para no repetir dentro del mismo archivo.
+    cuilSet.add(cuil);
+    if (legajo) legajoSet.add(legajo);
+  }
+
+  return {
+    companyName: company.name,
+    rows,
+    nuevos: rows.filter((r) => r.status === "nuevo").length,
+    existentes: rows.filter((r) => r.status === "existe").length,
+    invalidos: rows.filter((r) => r.status === "invalido").length,
+    created,
+  };
 }
 
 /** Nombre para mostrar a partir de apellido + nombre (formato "APELLIDO Nombre"). */

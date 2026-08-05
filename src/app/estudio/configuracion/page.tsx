@@ -5,6 +5,7 @@ import { listApiKeys } from "@/server/apikey-actions";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UsersManager } from "@/components/forms/users-manager";
+import { BulkEmployees } from "@/components/forms/bulk-employees";
 import { ApiKeysManager } from "@/components/forms/api-keys-manager";
 
 export default async function ConfiguracionPage() {
@@ -27,6 +28,15 @@ export default async function ConfiguracionPage() {
         </CardHeader>
         <CardContent>
           <UsersManager users={users} companies={opciones} canCreateStudioAdmin />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Cargar empleados desde archivo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BulkEmployees companies={opciones} />
         </CardContent>
       </Card>
 

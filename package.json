@@ -28,6 +28,7 @@
     "@vercel/blob": "^2.4.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.20.0",
     "next": "16.2.9",
@@ -36,6 +37,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.8.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -51,7 +53,6 @@
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5",
-    "unpdf": "^1.6.2"
+    "typescript": "^5"
   }
 }

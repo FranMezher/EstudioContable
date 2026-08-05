@@ -19,7 +19,10 @@ import {
   svcCompleteMyProfile,
   svcSetPayslipPaid,
   svcSignPayslip,
+  svcBulkCreateEmployees,
+  type BulkEmployeesResult,
 } from "@/server/services";
+import { parseEmployeesFile } from "@/server/parse-empleados";
 import type { Role } from "@/generated/prisma/enums";
 
 export type ActionState = {
@@ -273,6 +276,53 @@ export async function setUserActive(userId: string, isActive: boolean): Promise<
     return { ok: true };
   } catch (e) {
     return fail(e, "No se pudo actualizar el acceso");
+  }
+}
+
+export type BulkState = {
+  error?: string;
+  result?: BulkEmployeesResult;
+  /** true si la corrida fue una carga real (no previsualización). */
+  created?: boolean;
+};
+
+/**
+ * Alta masiva de empleados desde un listado (PDF / Excel / CSV), para una
+ * empresa que elige el estudio. mode="preview" solo muestra; "create" carga.
+ */
+export async function bulkCreateEmployees(
+  _prev: BulkState,
+  formData: FormData
+): Promise<BulkState> {
+  try {
+    const actor = await getSessionScope();
+    const companyId = str(formData, "companyId");
+    if (!companyId) return { error: "Elegí la empresa a la que pertenecen." };
+
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Adjuntá el archivo con el listado." };
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return { error: "El archivo no puede superar los 10 MB." };
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const parsed = await parseEmployeesFile(buffer, file.name);
+    if (parsed.length === 0) {
+      return {
+        error:
+          "No pude leer ningún empleado del archivo. Revisá que sea el listado correcto (PDF, Excel .xlsx o CSV).",
+      };
+    }
+
+    const create = str(formData, "mode") === "create";
+    const result = await svcBulkCreateEmployees(actor, companyId, parsed, { create });
+    if (create) revalidateAll();
+    return { result, created: create };
+  } catch (e) {
+    if (e instanceof ServiceError) return { error: e.message };
+    return { error: "No se pudo procesar el archivo." };
   }
 }
 
