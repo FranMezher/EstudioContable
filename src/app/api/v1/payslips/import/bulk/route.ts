@@ -21,6 +21,7 @@ type Item = {
   periodYear: number;
   netAmount?: number;
   liqNumber?: string;
+  label?: string;
   fileBase64: string;
   fileName: string;
   sourceHash: string;
@@ -62,6 +63,7 @@ export const POST = withApi(async ({ actor, req }) => {
         periodYear: Number(item.periodYear),
         netAmount: item.netAmount != null ? Number(item.netAmount) : null,
         liqNumber: item.liqNumber ?? null,
+        label: item.label ?? null,
         file: decodeBase64File(item.fileBase64),
         fileName: item.fileName,
         sourceHash: item.sourceHash,

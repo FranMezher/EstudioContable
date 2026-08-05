@@ -333,6 +333,7 @@ async function main() {
         periodYear: detected.periodYear,
         netAmount: detected.netAmount,
         liqNumber: detected.liqNumber,
+        label: detected.label,
         fileBase64: buffer.toString("base64"),
         fileName,
         sourceHash,

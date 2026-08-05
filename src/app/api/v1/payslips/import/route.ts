@@ -13,6 +13,7 @@ type ImportBody = {
   periodYear: number;
   netAmount?: number;
   liqNumber?: string;
+  label?: string;
   fileBase64: string;
   fileName: string;
   sourceHash: string;
@@ -38,6 +39,7 @@ function parse(body: ImportBody) {
     periodYear: Number(body.periodYear),
     netAmount: body.netAmount != null ? Number(body.netAmount) : null,
     liqNumber: body.liqNumber ?? null,
+    label: body.label ?? null,
     file: decodeBase64File(body.fileBase64),
     fileName: body.fileName,
     sourceHash: body.sourceHash,

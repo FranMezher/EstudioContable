@@ -4,12 +4,23 @@ import { useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Download, Eye, FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MESES, periodoCorto } from "@/lib/constants";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, cn } from "@/lib/utils";
 import { setPayslipPaid } from "@/server/actions";
 import type { PaymentRow } from "@/server/queries";
+
+/** Etiqueta y color del concepto. Sin label = sueldo mensual (neutro). */
+function conceptoBadge(label: string | null): { text: string; tone: "neutral" | "brand" | "accent" | "warning" } {
+  if (!label) return { text: "Sueldo", tone: "neutral" };
+  const l = label.toLowerCase();
+  if (l.includes("vacacion")) return { text: label, tone: "brand" };
+  if (l.includes("sac") || l.includes("aguinaldo")) return { text: label, tone: "accent" };
+  if (l.includes("final")) return { text: label, tone: "warning" };
+  return { text: label, tone: "brand" };
+}
 
 type Summary = {
   items: PaymentRow[];
@@ -169,14 +180,16 @@ export function PaymentsTable({
                 <tr className="border-b border-ink-200 bg-ink-50/60 text-left text-[11px] uppercase tracking-wider text-ink-500">
                   <th className="px-4 py-3 font-semibold">Pagado</th>
                   <th className="px-4 py-3 font-semibold">Empleado</th>
+                  <th className="px-4 py-3 font-semibold">Concepto</th>
                   <th className="px-4 py-3 font-semibold">Período</th>
+                  <th className="px-4 py-3 font-semibold">Liq.</th>
                   <th className="px-4 py-3 text-right font-semibold">Monto</th>
                   <th className="px-4 py-3 text-right font-semibold">Recibo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink-100">
-                {data.items.map((row) => (
-                  <PaymentRowItem key={row.id} row={row} />
+              <tbody>
+                {groupRows(data.items).map(({ row, first, band }) => (
+                  <PaymentRowItem key={row.id} row={row} first={first} band={band} />
                 ))}
               </tbody>
             </table>
@@ -187,9 +200,26 @@ export function PaymentsTable({
   );
 }
 
-function PaymentRowItem({ row }: { row: PaymentRow }) {
+/**
+ * Marca la primera fila de cada empleado (para mostrar el nombre una sola vez)
+ * y alterna una banda por empleado, para que se lean como un bloque y no como
+ * filas repetidas. Depende de que vengan ordenadas por empleado.
+ */
+function groupRows(items: PaymentRow[]): { row: PaymentRow; first: boolean; band: boolean }[] {
+  let prev: string | null = null;
+  let groupIndex = -1;
+  return items.map((row) => {
+    const first = row.employeeId !== prev;
+    if (first) groupIndex++;
+    prev = row.employeeId;
+    return { row, first, band: groupIndex % 2 === 1 };
+  });
+}
+
+function PaymentRowItem({ row, first, band }: { row: PaymentRow; first: boolean; band: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [paid, setPaid] = useState(row.paid);
+  const concepto = conceptoBadge(row.label);
 
   function toggle() {
     const next = !paid;
@@ -201,7 +231,15 @@ function PaymentRowItem({ row }: { row: PaymentRow }) {
   }
 
   return (
-    <tr className={`transition-colors ${paid ? "bg-emerald-50/50" : "hover:bg-ink-50/60"}`}>
+    <tr
+      className={cn(
+        "border-t transition-colors",
+        first ? "border-ink-200" : "border-ink-100/70",
+        paid
+          ? "bg-emerald-50/60 hover:bg-emerald-50"
+          : cn(band ? "bg-ink-50/50" : "bg-white", "hover:bg-ink-50/80")
+      )}
+    >
       <td className="px-4 py-3">
         <input
           type="checkbox"
@@ -213,13 +251,22 @@ function PaymentRowItem({ row }: { row: PaymentRow }) {
         />
       </td>
       <td className="px-4 py-3">
-        <p className="font-medium text-ink-800">{row.employeeName}</p>
-        <p className="tnum text-xs text-ink-500">
-          {row.legajo ? `Leg. ${row.legajo}` : ""}
-          {row.liqNumber ? `${row.legajo ? " · " : ""}Liq. ${row.liqNumber}` : ""}
-        </p>
+        {first ? (
+          <>
+            <p className="font-medium text-ink-800">{row.employeeName}</p>
+            {row.legajo && <p className="tnum text-xs text-ink-500">Leg. {row.legajo}</p>}
+          </>
+        ) : (
+          <span className="pl-1 text-ink-300" aria-hidden>
+            ↳
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <Badge tone={concepto.tone}>{concepto.text}</Badge>
       </td>
       <td className="px-4 py-3 text-ink-600">{periodoCorto(row.periodMonth, row.periodYear)}</td>
+      <td className="tnum px-4 py-3 text-ink-500">{row.liqNumber ?? "—"}</td>
       <td className="tnum px-4 py-3 text-right font-semibold text-ink-800">
         {row.netAmount != null ? formatMoney(row.netAmount) : "—"}
       </td>

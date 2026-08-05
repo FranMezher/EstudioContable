@@ -36,6 +36,7 @@ export async function GET(req: Request) {
   ws.columns = [
     { header: "Empleado", key: "empleado", width: 34 },
     { header: "Legajo", key: "legajo", width: 10 },
+    { header: "Concepto", key: "concepto", width: 14 },
     { header: "Período", key: "periodo", width: 16 },
     { header: "Liquidación", key: "liq", width: 13 },
     { header: "Monto neto", key: "monto", width: 16 },
@@ -51,6 +52,7 @@ export async function GET(req: Request) {
     ws.addRow({
       empleado: r.employeeName,
       legajo: r.legajo ?? "",
+      concepto: r.label ?? "Sueldo",
       periodo: periodoLabel(r.periodMonth, r.periodYear),
       liq: r.liqNumber ?? "",
       monto: r.netAmount ?? null,
@@ -59,7 +61,7 @@ export async function GET(req: Request) {
   }
 
   ws.getColumn("monto").numFmt = "#,##0.00";
-  ws.autoFilter = { from: "A1", to: `F${data.items.length + 1}` };
+  ws.autoFilter = { from: "A1", to: `G${data.items.length + 1}` };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
   // Fila de total.

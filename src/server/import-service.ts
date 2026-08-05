@@ -26,6 +26,8 @@ export type ImportPayslipInput = {
   netAmount?: number | null;
   /** Número de liquidación. Distingue recibos del mismo mes y da idempotencia. */
   liqNumber?: string | null;
+  /** Tipo de liquidación detectado (Vacaciones, SAC, Final). */
+  label?: string | null;
   file: Buffer;
   fileName: string;
   sourceHash: string;
@@ -141,6 +143,7 @@ export async function svcImportPayslip(
     fileName: input.fileName,
     netAmount: input.netAmount ?? null,
     liqNumber,
+    label: input.label ?? null,
     sourceHash: input.sourceHash,
     source: "IMPORT",
   });

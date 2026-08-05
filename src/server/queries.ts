@@ -261,11 +261,13 @@ function paymentWhere(scope: Scope, filter: PaymentFilter) {
 
 export type PaymentRow = {
   id: string;
+  employeeId: string;
   employeeName: string;
   legajo: string | null;
   periodMonth: number;
   periodYear: number;
   liqNumber: string | null;
+  label: string | null;
   netAmount: number | null;
   paid: boolean;
 };
@@ -274,17 +276,25 @@ export type PaymentRow = {
 export async function getPaymentRows(scope: Scope, filter: PaymentFilter) {
   const rows = await prisma.payslip.findMany({
     where: paymentWhere(scope, filter),
-    orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }, { employee: { name: "asc" } }],
-    include: { employee: { select: { name: true, legajo: true } } },
+    // Ordenado por empleado para poder agrupar sus liquidaciones juntas.
+    orderBy: [
+      { employee: { name: "asc" } },
+      { periodYear: "desc" },
+      { periodMonth: "desc" },
+      { liqNumber: "asc" },
+    ],
+    include: { employee: { select: { id: true, name: true, legajo: true } } },
   });
 
   const items: PaymentRow[] = rows.map((p) => ({
     id: p.id,
+    employeeId: p.employee.id,
     employeeName: p.employee.name,
     legajo: p.employee.legajo,
     periodMonth: p.periodMonth,
     periodYear: p.periodYear,
     liqNumber: p.liqNumber,
+    label: p.label ?? null,
     netAmount: p.netAmount ? Number(p.netAmount) : null,
     paid: !!p.paidAt,
   }));

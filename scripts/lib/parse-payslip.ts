@@ -37,6 +37,8 @@ export type Detected = {
   periodYear: number | null;
   netAmount: number | null;
   liqNumber: string | null;
+  /** Tipo de liquidación si el recibo lo indica (Vacaciones, SAC, Final). */
+  label: string | null;
   from: "nombre" | "contenido" | "nada";
 };
 
@@ -72,6 +74,12 @@ function parseAmount(raw: string): number | null {
  * depósito viene sin año, así que no se confunde).
  */
 function findPeriod(text: string): { month: number; year: number } | null {
+  // Prioridad: la línea del recibo "Período liq.: JULIO 2026" (y variantes).
+  const prio = text.match(
+    new RegExp(`per[ií]odo\\s*(?:de\\s+)?liq[\\wáéíóúñ.]*\\s*:?\\s*(${MES_RE})\\s+(20\\d{2})`, "i")
+  );
+  if (prio) return { month: MESES[prio[1].toLowerCase()], year: Number(prio[2]) };
+
   const m =
     text.match(new RegExp(`correspondiente\\s+a:?\\s*(${MES_RE})\\s+(20\\d{2})`, "i")) ??
     text.match(new RegExp(`(${MES_RE})\\s+(20\\d{2})`, "i"));
@@ -107,6 +115,23 @@ export async function readPdfText(buffer: Buffer): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/**
+ * Tipo de liquidación, solo si el recibo lo indica de forma explícita
+ * ("Tipo de liquidación: VACACIONES"). Es conservador a propósito: sin una
+ * etiqueta clara devuelve null (se trata como sueldo mensual), para no
+ * etiquetar mal un recibo normal que menciona "vacaciones" en una provisión.
+ */
+function findTipo(text: string): string | null {
+  const etiqueta = firstMatch(text, [
+    /(?:tipo|concepto|clase)\s*(?:de\s*)?liquidaci[oó]n\s*:?\s*([^\n]{3,30})/i,
+  ]);
+  const src = (etiqueta ?? "").toLowerCase();
+  if (/vacacion/.test(src)) return "Vacaciones";
+  if (/aguinaldo|s\.?\s?a\.?\s?c\.?|sueldo\s+anual/.test(src)) return "SAC";
+  if (/final|indemniz|egreso|preaviso/.test(src)) return "Final";
+  return null;
 }
 
 function parseFromText(text: string): Partial<Detected> {
@@ -151,6 +176,7 @@ function parseFromText(text: string): Partial<Detected> {
     netAmount: net ? parseAmount(net) : null,
     periodMonth: period?.month ?? null,
     periodYear: period?.year ?? null,
+    label: findTipo(text),
   };
 }
 
@@ -183,6 +209,7 @@ export async function detectPayslip(filePath: string, buffer: Buffer): Promise<D
     periodYear: fromText.periodYear ?? null,
     netAmount: fromText.netAmount ?? null,
     liqNumber: fromName.liqNumber,
+    label: fromText.label ?? null,
     from,
   };
 }

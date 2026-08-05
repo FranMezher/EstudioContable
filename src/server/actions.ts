@@ -183,6 +183,7 @@ export async function uploadPayslip(_prev: ActionState, formData: FormData): Pro
       file,
       fileName: file.name,
       netAmount: num(formData, "netAmount"),
+      label: str(formData, "label") || null,
       source: "MANUAL",
     });
 

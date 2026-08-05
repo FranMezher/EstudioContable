@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/field";
+import { Input, Label, Select } from "@/components/ui/field";
 import { PeriodFields } from "@/components/period-fields";
 import { useFormPanel } from "@/lib/use-form-panel";
 import { uploadPayslip, type ActionState } from "@/server/actions";
@@ -48,6 +48,16 @@ export function UploadPayslipForm({ employeeId }: { employeeId: string }) {
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <PeriodFields />
+
+      <div>
+        <Label htmlFor="label">Concepto</Label>
+        <Select id="label" name="label" defaultValue="">
+          <option value="">Sueldo (mensual)</option>
+          <option value="Vacaciones">Vacaciones</option>
+          <option value="SAC">SAC / Aguinaldo</option>
+          <option value="Final">Liquidación final</option>
+        </Select>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
