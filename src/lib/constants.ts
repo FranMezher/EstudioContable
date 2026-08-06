@@ -38,12 +38,22 @@ export const SETTING_KEYS = {
   CONTACT_EMAIL: "contact_email",
 } as const;
 
-export function periodoLabel(month: number | null | undefined, year: number) {
+export function periodoLabel(
+  month: number | null | undefined,
+  year: number | null | undefined
+) {
+  // Liquidaciones sin mes (vacaciones, SAC): quedan sin fecha.
+  if (!year && !month) return "Sin fecha";
   if (!month) return `${year}`;
+  if (!year) return MESES[month - 1];
   return `${MESES[month - 1]} ${year}`;
 }
 
-export function periodoCorto(month: number, year: number) {
+export function periodoCorto(
+  month: number | null | undefined,
+  year: number | null | undefined
+) {
+  if (!month || !year) return "Sin fecha";
   return `${MESES_CORTOS[month - 1]} ${year}`;
 }
 

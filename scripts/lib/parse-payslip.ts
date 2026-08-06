@@ -117,6 +117,79 @@ export async function readPdfText(buffer: Buffer): Promise<string> {
   }
 }
 
+type PdfItem = { str?: string; transform?: number[] };
+
+/**
+ * Reconstruye las filas visuales del PDF por coordenadas. El texto "plano"
+ * mezcla columnas; esto permite leer un campo (ej. "Período Liq.") junto a su
+ * valor, que en el texto plano queda separado de la etiqueta.
+ */
+async function readPdfRows(buffer: Buffer): Promise<string[][]> {
+  try {
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const rows: string[][] = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const items = (content.items as PdfItem[])
+        .filter((it) => typeof it.str === "string" && it.str.trim().length > 0 && it.transform)
+        .map((it) => ({ x: it.transform![4], y: it.transform![5], str: it.str! }));
+      items.sort((a, b) => b.y - a.y || a.x - b.x);
+      let curY = Infinity;
+      let cur: { x: number; str: string }[] = [];
+      const flush = () => {
+        if (cur.length) rows.push(cur.sort((a, b) => a.x - b.x).map((c) => c.str));
+        cur = [];
+      };
+      for (const it of items) {
+        if (Math.abs(it.y - curY) > 2) {
+          flush();
+          curY = it.y;
+        }
+        cur.push({ x: it.x, str: it.str });
+      }
+      flush();
+    }
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+/** Valor del campo "Período Liq." leído por su fila (ej "1º SAC 2026",
+ * "VACACIONES 2025", "AGOSTO PROP. 2026", "JULIO 2026"). */
+function periodoLiqValue(rows: string[][]): string | null {
+  for (const row of rows) {
+    const i = row.findIndex((c) => /per[ií]odo\s*liq/i.test(c));
+    if (i < 0) continue;
+    // El valor puede ir pegado a la etiqueta (misma celda) o en la siguiente.
+    const inline = row[i].replace(/^.*per[ií]odo\s*liq[a-záéíóúñ]*\.?\s*:?\s*/i, "").trim();
+    const value = (inline || row[i + 1]?.trim() || "").trim();
+    if (!value || /^(remun|banco|dep[oó]sito)/i.test(value)) return null;
+    return value;
+  }
+  return null;
+}
+
+/**
+ * Interpreta el valor de "Período Liq." según la regla del estudio:
+ *   contiene "vacaciones"        → concepto Vacaciones, SIN fecha
+ *   contiene "SAC"/"aguinaldo"/"prop" → concepto SAC, SIN fecha
+ *   "<mes> <año>" (ej JULIO 2026)     → ese período
+ */
+function interpretarPeriodoLiq(value: string | null): {
+  label: string | null;
+  period: { month: number; year: number } | null;
+} {
+  if (!value) return { label: null, period: null };
+  const v = value.toLowerCase();
+  if (/vacacion/.test(v)) return { label: "Vacaciones", period: null };
+  if (/\bsac\b|aguinaldo|\bprop/.test(v)) return { label: "SAC", period: null };
+  const m = value.match(new RegExp(`(${MES_RE})\\s+(20\\d{2})`, "i"));
+  if (m) return { label: null, period: { month: MESES[m[1].toLowerCase()], year: Number(m[2]) } };
+  return { label: null, period: null };
+}
+
 /**
  * Tipo de liquidación, solo si el recibo lo indica de forma explícita
  * ("Tipo de liquidación: VACACIONES"). Es conservador a propósito: sin una
@@ -193,11 +266,26 @@ export async function detectPayslip(filePath: string, buffer: Buffer): Promise<D
   const text = await readPdfText(buffer);
   const fromText = text ? parseFromText(text) : {};
 
+  // El campo "Período Liq." se lee por coordenadas (su valor no queda pegado a
+  // la etiqueta en el texto plano). Define el concepto y si hay fecha.
+  const rows = await readPdfRows(buffer);
+  const interp = interpretarPeriodoLiq(periodoLiqValue(rows));
+
   const cuil = fromText.cuil ?? null;
   // El contenido del PDF manda sobre el nombre del archivo.
   const legajo = fromText.legajo ?? fromName.legajo;
 
   const from: Detected["from"] = !legajo && !cuil ? "nada" : text ? "contenido" : "nombre";
+
+  // Liquidación especial (vacaciones/SAC): hay concepto pero NO período.
+  // Normal: período del valor "<mes> <año>", o el del texto plano como respaldo.
+  const label = interp.label ?? fromText.label ?? null;
+  const period = interp.label
+    ? null
+    : interp.period ??
+      (fromText.periodMonth && fromText.periodYear
+        ? { month: fromText.periodMonth, year: fromText.periodYear }
+        : null);
 
   return {
     employerCuit: fromText.employerCuit ?? null,
@@ -205,11 +293,11 @@ export async function detectPayslip(filePath: string, buffer: Buffer): Promise<D
     legajo,
     dni: fromText.dni ?? null,
     employeeName: fromText.employeeName ?? null,
-    periodMonth: fromText.periodMonth ?? null,
-    periodYear: fromText.periodYear ?? null,
+    periodMonth: period?.month ?? null,
+    periodYear: period?.year ?? null,
     netAmount: fromText.netAmount ?? null,
     liqNumber: fromName.liqNumber,
-    label: fromText.label ?? null,
+    label,
     from,
   };
 }

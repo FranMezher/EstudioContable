@@ -9,8 +9,8 @@ type ImportBody = {
   legajo?: string;
   dni?: string;
   employeeName?: string;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth?: number | null;
+  periodYear?: number | null;
   netAmount?: number;
   liqNumber?: string;
   label?: string;
@@ -25,8 +25,8 @@ function parse(body: ImportBody) {
   if (!body.fileBase64) throw new ServiceError("Falta fileBase64", 400);
   if (!body.fileName) throw new ServiceError("Falta fileName", 400);
   if (!body.sourceHash) throw new ServiceError("Falta sourceHash", 400);
-  if (!body.periodMonth || !body.periodYear)
-    throw new ServiceError("Falta el período (periodMonth / periodYear)", 400);
+  // El período puede faltar en liquidaciones especiales (vacaciones, SAC): en
+  // ese caso el recibo queda "sin fecha". El servicio valida que haya concepto.
 
   return {
     companyRef: body.companyRef ?? null,
@@ -35,8 +35,8 @@ function parse(body: ImportBody) {
     legajo: body.legajo ?? null,
     dni: body.dni ?? null,
     employeeName: body.employeeName ?? null,
-    periodMonth: Number(body.periodMonth),
-    periodYear: Number(body.periodYear),
+    periodMonth: body.periodMonth != null ? Number(body.periodMonth) : null,
+    periodYear: body.periodYear != null ? Number(body.periodYear) : null,
     netAmount: body.netAmount != null ? Number(body.netAmount) : null,
     liqNumber: body.liqNumber ?? null,
     label: body.label ?? null,

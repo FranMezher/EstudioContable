@@ -303,7 +303,10 @@ async function main() {
         continue;
       }
 
-      if (!detected.periodMonth || !detected.periodYear) {
+      // Sin período está permitido cuando es una liquidación especial
+      // (vacaciones, SAC): en ese caso hay concepto y el recibo queda "sin
+      // fecha". Solo es un problema si no hay ni período ni concepto.
+      if ((!detected.periodMonth || !detected.periodYear) && !detected.label) {
         reportes.push({
           ...base,
           status: "SIN_PERIODO",
@@ -314,9 +317,12 @@ async function main() {
       }
 
       if (args.dryRun) {
+        const periodoTxt = detected.periodMonth
+          ? `${detected.periodMonth}/${detected.periodYear}`
+          : "sin fecha";
         console.log(
           `  · ${rel} → Leg ${detected.legajo ?? "?"} / CUIL ${detected.cuil ?? "?"}, ` +
-            `${detected.periodMonth}/${detected.periodYear}, Liq ${detected.liqNumber ?? "?"}, ` +
+            `${periodoTxt}${detected.label ? ` (${detected.label})` : ""}, Liq ${detected.liqNumber ?? "?"}, ` +
             `neto ${detected.netAmount ?? "?"}, empresa ${companyRef ?? detected.employerCuit ?? "(key)"} [${detected.from}]`
         );
         continue;

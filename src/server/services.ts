@@ -373,8 +373,9 @@ export async function svcCompleteMyProfile(
 
 export type PayslipInput = {
   employeeId: string;
-  periodMonth: number;
-  periodYear: number;
+  // Nulos en liquidaciones especiales (vacaciones, SAC): el recibo queda sin fecha.
+  periodMonth: number | null;
+  periodYear: number | null;
   file: Buffer | File;
   fileName: string;
   netAmount?: number | null;
@@ -398,7 +399,13 @@ function validatePeriod(month: number, year: number) {
 export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
   assertCanWrite(actor.scope);
   const employee = await findEmployeeInScope(actor.scope, input.employeeId);
-  validatePeriod(input.periodMonth, input.periodYear);
+  // Con período se valida el mes/año; sin período tiene que haber un concepto
+  // (vacaciones, SAC): así el recibo queda "sin fecha" pero identificado.
+  if (input.periodMonth != null && input.periodYear != null) {
+    validatePeriod(input.periodMonth, input.periodYear);
+  } else if (!input.label?.trim()) {
+    throw new ServiceError("Indicá el período del recibo (o su concepto, si es una liquidación sin mes)");
+  }
 
   const liqNumber = input.liqNumber?.trim() || null;
   if (liqNumber) {
@@ -417,8 +424,8 @@ export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
   const path = payslipPath({
     companyId: employee.companyId,
     employeeId: employee.id,
-    periodYear: input.periodYear,
-    periodMonth: input.periodMonth,
+    periodYear: input.periodYear ?? 0,
+    periodMonth: input.periodMonth ?? 0,
     fileName: input.fileName,
     // El discriminador evita pisar otro recibo del mismo mes.
     discriminator: liqNumber ?? String(Date.now()),
@@ -458,7 +465,11 @@ export async function svcCreatePayslip(actor: Actor, input: PayslipInput) {
 }
 
 /** Avisa al empleado (si tiene acceso creado) que le cargaron un recibo. */
-export async function notifyPayslip(employeeId: string, month: number, year: number) {
+export async function notifyPayslip(
+  employeeId: string,
+  month: number | null,
+  year: number | null
+) {
   const user = await prisma.user.findUnique({
     where: { employeeId },
     select: { id: true, isActive: true },
@@ -467,7 +478,10 @@ export async function notifyPayslip(employeeId: string, month: number, year: num
   await notifyUsers([user.id], {
     type: "PAYSLIP",
     title: "Nuevo recibo de sueldo",
-    message: `Ya está disponible tu recibo de ${periodoLabel(month, year)}.`,
+    message:
+      month && year
+        ? `Ya está disponible tu recibo de ${periodoLabel(month, year)}.`
+        : "Ya está disponible un nuevo recibo tuyo.",
     link: "/mis-recibos",
   });
 }

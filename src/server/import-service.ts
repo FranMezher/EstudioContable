@@ -21,8 +21,9 @@ export type ImportPayslipInput = {
   dni?: string | null;
   /** Nombre leído del PDF. Solo informativo (el importador no crea empleados). */
   employeeName?: string | null;
-  periodMonth: number;
-  periodYear: number;
+  // Nulos en liquidaciones especiales (vacaciones, SAC): el recibo queda sin fecha.
+  periodMonth: number | null;
+  periodYear: number | null;
   netAmount?: number | null;
   /** Número de liquidación. Distingue recibos del mismo mes y da idempotencia. */
   liqNumber?: string | null;

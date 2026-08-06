@@ -50,9 +50,11 @@ export async function GET(req: Request) {
         const buffer = Buffer.from(await new Response(file.stream).arrayBuffer());
 
         const carpeta = sanitize(p.employee.name || p.employee.legajo || "empleado");
-        const mes = String(p.periodMonth).padStart(2, "0");
         const liq = p.liqNumber ? `-Liq${p.liqNumber}` : "";
-        let nombre = `${carpeta}/${p.periodYear}-${mes} ${MESES[p.periodMonth - 1]}${liq}.pdf`;
+        let nombre =
+          p.periodMonth != null && p.periodYear != null
+            ? `${carpeta}/${p.periodYear}-${String(p.periodMonth).padStart(2, "0")} ${MESES[p.periodMonth - 1]}${liq}.pdf`
+            : `${carpeta}/Sin fecha${liq}.pdf`;
 
         // Evita colisiones de nombre dentro del zip.
         const prev = usados.get(nombre) ?? 0;

@@ -14,14 +14,18 @@ export function textoConformidad(args: {
   nombre: string;
   cuil: string;
   empresa: string;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth: number | null;
+  periodYear: number | null;
   documentHash: string;
 }): string {
-  const periodo = periodoLabel(args.periodMonth, args.periodYear);
+  // Las liquidaciones sin mes (vacaciones, SAC) no llevan período.
+  const refPeriodo =
+    args.periodMonth && args.periodYear
+      ? `correspondiente al período ${periodoLabel(args.periodMonth, args.periodYear)}`
+      : "correspondiente a la presente liquidación";
   return (
     `Yo, ${args.nombre} (CUIL ${args.cuil}), empleado/a de ${args.empresa}, ` +
-    `declaro haber recibido y revisado mi recibo de haberes correspondiente al período ${periodo}, ` +
+    `declaro haber recibido y revisado mi recibo de haberes ${refPeriodo}, ` +
     `y manifiesto mi conformidad conforme a los arts. 138 y siguientes de la Ley de Contrato de Trabajo (Ley 20.744). ` +
     `Firmo este documento en forma electrónica —en los términos del art. 5 de la Ley 25.506— ` +
     `reconociéndolo como propio. El documento firmado corresponde al archivo con huella digital ` +

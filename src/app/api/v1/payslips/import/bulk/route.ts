@@ -17,8 +17,8 @@ type Item = {
   legajo?: string;
   dni?: string;
   employeeName?: string;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth?: number | null;
+  periodYear?: number | null;
   netAmount?: number;
   liqNumber?: string;
   label?: string;
@@ -59,8 +59,8 @@ export const POST = withApi(async ({ actor, req }) => {
         legajo: item.legajo ?? null,
         dni: item.dni ?? null,
         employeeName: item.employeeName ?? null,
-        periodMonth: Number(item.periodMonth),
-        periodYear: Number(item.periodYear),
+        periodMonth: item.periodMonth != null ? Number(item.periodMonth) : null,
+        periodYear: item.periodYear != null ? Number(item.periodYear) : null,
         netAmount: item.netAmount != null ? Number(item.netAmount) : null,
         liqNumber: item.liqNumber ?? null,
         label: item.label ?? null,

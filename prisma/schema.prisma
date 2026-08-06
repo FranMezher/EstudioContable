@@ -144,8 +144,10 @@ model Payslip {
   id          String   @id @default(cuid())
   employeeId  String
   employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  periodMonth Int // 1-12
-  periodYear  Int
+  // Nulos en liquidaciones sin mes calendario (vacaciones, SAC/aguinaldo): el
+  // recibo se guarda "sin fecha" y se distingue por el número de liquidación.
+  periodMonth Int? // 1-12
+  periodYear  Int?
 
   /// Número de liquidación (ej: 1207). Distingue recibos del mismo mes.
   liqNumber String?
@@ -199,8 +201,8 @@ model PayslipSignature {
   companyName String
   companyCuit String?
   fileName    String
-  periodMonth Int
-  periodYear  Int
+  periodMonth Int?
+  periodYear  Int?
   netAmount   Decimal? @db.Decimal(14, 2)
 
   /// SHA-256 del PDF exacto que se firmó (integridad del documento).

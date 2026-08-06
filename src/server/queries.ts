@@ -16,8 +16,8 @@ import {
 
 export type PayslipDTO = {
   id: string;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth: number | null;
+  periodYear: number | null;
   liqNumber: string | null;
   label: string | null;
   fileName: string;
@@ -53,8 +53,8 @@ export type CompanyDTO = {
 
 function toPayslipDTO(p: {
   id: string;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth: number | null;
+  periodYear: number | null;
   liqNumber: string | null;
   label: string | null;
   fileName: string;
@@ -163,9 +163,10 @@ export async function getEmployees(
     autoCreated: e.autoCreated,
     hasAccess: !!e.user,
     payslipCount: e._count.payslips,
-    lastPeriod: e.payslips[0]
-      ? { month: e.payslips[0].periodMonth, year: e.payslips[0].periodYear }
-      : null,
+    lastPeriod:
+      e.payslips[0]?.periodMonth != null && e.payslips[0]?.periodYear != null
+        ? { month: e.payslips[0].periodMonth, year: e.payslips[0].periodYear }
+        : null,
   }));
 }
 
@@ -220,7 +221,8 @@ export async function getMyPayslips(scope: Scope) {
     include: withSignature,
   });
 
-  const porAnio = new Map<number, PayslipDTO[]>();
+  // Los recibos sin fecha (vacaciones, SAC) se agrupan con año null y van al final.
+  const porAnio = new Map<number | null, PayslipDTO[]>();
   for (const row of rows) {
     const dto = toPayslipDTO(row);
     const lista = porAnio.get(dto.periodYear) ?? [];
@@ -229,7 +231,7 @@ export async function getMyPayslips(scope: Scope) {
   }
 
   return [...porAnio.entries()]
-    .sort((a, b) => b[0] - a[0])
+    .sort((a, b) => (b[0] ?? -1) - (a[0] ?? -1))
     .map(([year, payslips]) => ({ year, payslips }));
 }
 
@@ -241,7 +243,7 @@ export async function getAvailableYears(scope: Scope, companyId?: string): Promi
     select: { periodYear: true },
     orderBy: { periodYear: "desc" },
   });
-  return rows.map((r) => r.periodYear);
+  return rows.map((r) => r.periodYear).filter((y): y is number => y != null);
 }
 
 // ---------------------------------------------------------------------------
@@ -264,8 +266,8 @@ export type PaymentRow = {
   employeeId: string;
   employeeName: string;
   legajo: string | null;
-  periodMonth: number;
-  periodYear: number;
+  periodMonth: number | null;
+  periodYear: number | null;
   liqNumber: string | null;
   label: string | null;
   netAmount: number | null;

@@ -33,8 +33,10 @@ export default async function MisRecibosPage() {
       ) : (
         <div className="space-y-6">
           {porAnio.map((grupo) => (
-            <section key={grupo.year}>
-              <h2 className="mb-2 px-1 text-sm font-semibold text-ink-500">{grupo.year}</h2>
+            <section key={grupo.year ?? "sin-fecha"}>
+              <h2 className="mb-2 px-1 text-sm font-semibold text-ink-500">
+                {grupo.year ?? "Sin fecha"}
+              </h2>
               <PayslipList payslips={grupo.payslips} canSign />
             </section>
           ))}
