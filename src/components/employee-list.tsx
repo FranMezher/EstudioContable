@@ -24,7 +24,7 @@ export function EmployeeList({
   }
 
   return (
-    <ul className="divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
+    <ul className="divide-y divide-ink-100 overflow-hidden rounded-lg border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
       {employees.map((e) => (
         <li key={e.id}>
           <Link

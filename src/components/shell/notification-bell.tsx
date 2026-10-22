@@ -23,12 +23,12 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
+        className="relative flex h-11 w-11 items-center justify-center rounded-md border border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
         aria-label="Notificaciones"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-600 px-1 text-[10px] font-bold text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -37,7 +37,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg">
+          <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-ink-200 bg-white shadow-[var(--shadow-pop)]">
             <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
               <span className="text-sm font-semibold text-ink-800">Notificaciones</span>
               {unread > 0 && (
@@ -52,7 +52,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
             </div>
             <div className="max-h-80 overflow-y-auto">
               {items.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-ink-400">
+                <p className="px-4 py-8 text-center text-sm text-ink-500">
                   No tenés notificaciones
                 </p>
               ) : (
@@ -71,7 +71,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
                       <div className={cn(!n.isRead ? "" : "pl-4")}>
                         <p className="text-sm font-medium text-ink-800">{n.title}</p>
                         <p className="text-sm text-ink-500">{n.message}</p>
-                        <p className="mt-1 text-xs text-ink-400">
+                        <p className="mt-1 text-xs text-ink-500">
                           {formatDateTime(n.createdAt)}
                         </p>
                       </div>

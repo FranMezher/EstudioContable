@@ -122,7 +122,7 @@ export function PendingReview({ items }: { items: PendingItemDTO[] }) {
     });
 
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-[var(--shadow-card)]">
+    <div className="mb-6 overflow-hidden rounded-lg border border-amber-200 bg-white shadow-[var(--shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50/60 px-5 py-4">
         <div className="flex items-center gap-2.5">
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />

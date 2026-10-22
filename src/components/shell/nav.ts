@@ -1,9 +1,10 @@
 import {
   Building2,
   FileDown,
+  KeyRound,
   LayoutDashboard,
   Receipt,
-  Settings,
+  SlidersHorizontal,
   Users,
   Wallet,
   type LucideIcon,
@@ -21,12 +22,12 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/estudio", label: "Inicio", icon: LayoutDashboard },
     { href: "/estudio/empresas", label: "Empresas", icon: Building2 },
     { href: "/estudio/importaciones", label: "Importaciones", icon: FileDown },
-    { href: "/estudio/configuracion", label: "Configuración", icon: Settings },
+    { href: "/estudio/configuracion", label: "Configuración", icon: SlidersHorizontal },
   ],
   COMPANY_ADMIN: [
     { href: "/empresa", label: "Empleados", icon: Users },
     { href: "/empresa/pagos", label: "Pagos", icon: Wallet },
-    { href: "/empresa/accesos", label: "Accesos", icon: Settings },
+    { href: "/empresa/accesos", label: "Accesos", icon: KeyRound },
   ],
   // El empleado no necesita menú: entra directo a lo único que puede ver.
   EMPLOYEE: [{ href: "/mis-recibos", label: "Mis recibos", icon: Receipt }],
