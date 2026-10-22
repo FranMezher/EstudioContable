@@ -33,7 +33,7 @@ export function NewEmployeeForm({ companyId }: { companyId?: string }) {
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
+      className="w-full space-y-3 rounded-lg border border-ink-200 bg-white p-4 shadow-sm"
     >
       {/* El servidor valida este id contra el alcance del usuario. */}
       {companyId && <input type="hidden" name="companyId" value={companyId} />}

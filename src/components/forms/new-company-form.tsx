@@ -33,7 +33,7 @@ export function NewCompanyForm() {
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
+      className="w-full space-y-3 rounded-lg border border-ink-200 bg-white p-4 shadow-sm"
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-ink-800">Nueva empresa</p>

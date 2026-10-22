@@ -33,7 +33,7 @@ export function PayslipList({
   }
 
   return (
-    <ul className="divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
+    <ul className="divide-y divide-ink-100 overflow-hidden rounded-lg border border-ink-200/80 bg-white shadow-[var(--shadow-card)]">
       {payslips.map((p) => {
         const periodo =
           periodoLabel(p.periodMonth, p.periodYear) +
@@ -43,7 +43,7 @@ export function PayslipList({
             key={p.id}
             className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink-50/70"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ring-1 ring-brand-100">
               <Receipt className="h-5 w-5" />
             </div>
 

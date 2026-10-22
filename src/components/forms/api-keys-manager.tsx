@@ -81,7 +81,7 @@ export function ApiKeysManager({
       {panel.open && (
         <form
           action={formAction}
-          className="mb-5 space-y-3 rounded-xl border border-ink-200 bg-ink-50 p-4"
+          className="mb-5 space-y-3 rounded-lg border border-ink-200 bg-ink-50 p-4"
         >
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
           <div className="grid gap-3 sm:grid-cols-2">
@@ -106,11 +106,11 @@ export function ApiKeysManager({
       )}
 
       {keys.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-ink-300 bg-ink-50/50 px-4 py-8 text-center text-sm text-ink-500">
+        <p className="rounded-lg border border-dashed border-ink-300 bg-ink-50/50 px-4 py-8 text-center text-sm text-ink-500">
           Todavía no generaste ninguna API key.
         </p>
       ) : (
-        <ul className="divide-y divide-ink-100 overflow-hidden rounded-xl border border-ink-200 bg-white">
+        <ul className="divide-y divide-ink-100 overflow-hidden rounded-lg border border-ink-200 bg-white">
           {keys.map((k) => (
             <li key={k.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">

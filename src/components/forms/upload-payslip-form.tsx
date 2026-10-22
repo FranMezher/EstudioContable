@@ -34,7 +34,7 @@ export function UploadPayslipForm({ employeeId }: { employeeId: string }) {
   return (
     <form
       action={formAction}
-      className="w-full space-y-3 rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
+      className="w-full space-y-3 rounded-lg border border-ink-200 bg-white p-4 shadow-sm"
     >
       <input type="hidden" name="employeeId" value={employeeId} />
 

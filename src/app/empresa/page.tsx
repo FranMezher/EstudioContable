@@ -1,9 +1,9 @@
-import { Receipt, Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import { requireCompanyAdmin } from "@/lib/session";
 import { getDashboardStats, getEmployees } from "@/server/queries";
 import { periodoLabel } from "@/lib/constants";
 import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
+import { StatStrip } from "@/components/stat-strip";
 import { EmployeeList } from "@/components/employee-list";
 import { NewEmployeeForm } from "@/components/forms/new-employee-form";
 import { Input } from "@/components/ui/field";
@@ -30,19 +30,19 @@ export default async function EmpresaHome({
         action={<NewEmployeeForm />}
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2">
-        <StatCard label="Empleados activos" value={stats.employees} icon={Users} />
-        <StatCard
-          label="Recibos cargados"
-          value={stats.payslips}
-          hint={
-            stats.lastPeriod
-              ? `Último: ${periodoLabel(stats.lastPeriod.periodMonth, stats.lastPeriod.periodYear)}`
-              : undefined
-          }
-          icon={Receipt}
-        />
-      </div>
+      <StatStrip
+        className="mb-8"
+        stats={[
+          { label: "Empleados activos", value: stats.employees },
+          {
+            label: stats.lastPeriod
+              ? `Recibos de ${periodoLabel(stats.lastPeriod.periodMonth, stats.lastPeriod.periodYear).toLowerCase()}`
+              : "Recibos cargados",
+            value: stats.lastPeriod ? stats.periodPayslips : stats.payslips,
+          },
+          { label: "Sin firmar", value: stats.periodUnsigned },
+        ]}
+      />
 
       <form className="mb-4">
         <div className="relative max-w-sm">

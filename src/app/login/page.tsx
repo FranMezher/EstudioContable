@@ -8,7 +8,7 @@ export default async function LoginPage() {
   if (session?.user) redirect("/");
 
   return (
-    <AuthShell title="Iniciar sesión" subtitle="Ingresá con los datos que te dio el estudio.">
+    <AuthShell title="Ingresar">
       <LoginForm />
     </AuthShell>
   );

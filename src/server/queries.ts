@@ -345,7 +345,65 @@ export async function getDashboardStats(scope: Scope) {
     }),
   ]);
 
-  return { companies, employees, payslips, lastPeriod: lastPayslip };
+  // Recibos del último período cargado y cuántos faltan firmar.
+  const period =
+    lastPayslip?.periodYear && lastPayslip?.periodMonth
+      ? { periodYear: lastPayslip.periodYear, periodMonth: lastPayslip.periodMonth }
+      : null;
+  const [periodPayslips, periodUnsigned] = period
+    ? await Promise.all([
+        prisma.payslip.count({ where: scoped(payslipWhere(scope), period) }),
+        prisma.payslip.count({
+          where: scoped(payslipWhere(scope), { ...period, signature: { is: null } }),
+        }),
+      ])
+    : [0, 0];
+
+  return {
+    companies,
+    employees,
+    payslips,
+    lastPeriod: lastPayslip,
+    periodPayslips,
+    periodUnsigned,
+  };
+}
+
+export type PeriodCoverageDTO = {
+  id: string;
+  name: string;
+  activeEmployees: number;
+  /** Empleados activos que ya tienen al menos un recibo del período. */
+  withPayslip: number;
+};
+
+/**
+ * Por empresa: cuántos empleados activos ya tienen su recibo del período.
+ * Es lo que alimenta "Para hacer" en el inicio del estudio.
+ */
+export async function getPeriodCoverage(
+  scope: Scope,
+  period: { periodYear: number; periodMonth: number }
+): Promise<PeriodCoverageDTO[]> {
+  const rows = await prisma.company.findMany({
+    where: companyWhere(scope),
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      employees: {
+        where: { isActive: true },
+        select: { _count: { select: { payslips: { where: period } } } },
+      },
+    },
+  });
+
+  return rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    activeEmployees: c.employees.length,
+    withPayslip: c.employees.filter((e) => e._count.payslips > 0).length,
+  }));
 }
 
 export type PendingItemDTO = {

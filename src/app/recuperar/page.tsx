@@ -27,7 +27,7 @@ export default function RecuperarPage() {
         />
       </div>
 
-      <div className="mt-6 rounded-xl bg-brand-50 p-3.5 text-sm text-brand-800 ring-1 ring-brand-100">
+      <div className="mt-6 rounded-lg bg-brand-50 p-3.5 text-sm text-brand-800 ring-1 ring-brand-100">
         <b className="font-semibold">Tip:</b> si sos administrador y vas a crear un acceso nuevo,
         ahora podés elegir vos la contraseña en el mismo momento.
       </div>
@@ -52,7 +52,7 @@ function Caso({
   texto: string;
 }) {
   return (
-    <div className="flex gap-3 rounded-xl border border-ink-200 p-3.5 transition-colors hover:border-ink-300 hover:bg-ink-50/60">
+    <div className="flex gap-3 rounded-lg border border-ink-200 p-3.5 transition-colors hover:border-ink-300 hover:bg-ink-50/60">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ring-1 ring-brand-100">
         <Icon className="h-[18px] w-[18px]" />
       </div>

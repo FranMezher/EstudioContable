@@ -45,7 +45,7 @@ export function SignPayslipButton({
           onClick={panel.hide}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
+            className="w-full max-w-lg rounded-lg bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
@@ -65,7 +65,7 @@ export function SignPayslipButton({
             <form action={formAction} className="space-y-4 px-5 py-5">
               <input type="hidden" name="payslipId" value={payslipId} />
 
-              <div className="rounded-xl border border-ink-200 bg-ink-50/70 p-3.5 text-[13px] leading-relaxed text-ink-700">
+              <div className="rounded-lg border border-ink-200 bg-ink-50/70 p-3.5 text-[13px] leading-relaxed text-ink-700">
                 Declaro haber recibido y revisado mi recibo de haberes del período{" "}
                 <strong>{periodo}</strong>, y manifiesto mi <strong>conformidad</strong> conforme al
                 art. 138 y ss. de la Ley de Contrato de Trabajo. Firmo este documento en forma
